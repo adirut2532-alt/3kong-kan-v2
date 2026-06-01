@@ -28,31 +28,55 @@ export default function GameRoom({ player, memberId, roomId, onExit }) {
   const [isHost, setIsHost]   = useState(false);
 
   // Player Hand State
-  const [hand, setHand]               = useState({ front: [], mid: [], back: [], unplaced: [], done: false, foul: false });
+  const [hand, setHand]                 = useState({ front: [], mid: [], back: [], unplaced: [], done: false, foul: false });
   const [selectedCard, setSelectedCard] = useState(null);
   const [undoStack, setUndoStack]       = useState([]);
   const [aiMode, setAiMode]             = useState('balanced');
 
   // ── Drag State ──────────────────────────────────────────────────
-  const [dragging, setDragging]     = useState(null);  // card being dragged
-  const [ghost, setGhost]           = useState(null);  // { x, y, card }
-  const [hoverZone, setHoverZone]   = useState(null);  // zone name under pointer
-  const dragInfo   = useRef(null);    // { moved, card, handSnapshot }
-  const zoneRefs   = useRef({});      // { back: el, mid: el, front: el, unplaced: el }
+  // dragging holds the card object only to mount the ghost + dim the source.
+  // All movement happens via direct DOM writes (no re-render) for smoothness.
+  const [dragging, setDragging] = useState(null);
+  const ghostRef  = useRef(null);   // the floating ghost element
+  const dragInfo  = useRef(null);   // { startX, startY, moved, card, hover, handSnapshot }
+  const zoneRefs  = useRef({});     // { back: el, mid: el, front: el, unplaced: el }
 
-  // Register a drop-zone element
   function regZone(name, el) {
     if (el) zoneRefs.current[name] = el;
     else    delete zoneRefs.current[name];
   }
 
-  // Find which zone the pointer is inside (uses live DOM rects)
   function zoneAt(x, y) {
     for (const [name, el] of Object.entries(zoneRefs.current)) {
       const r = el.getBoundingClientRect();
       if (x >= r.left && x <= r.right && y >= r.top && y <= r.bottom) return name;
     }
     return null;
+  }
+
+  // Move the ghost with a GPU transform (no React re-render)
+  function positionGhost(x, y) {
+    const g = ghostRef.current;
+    if (g) g.style.transform = `translate(${x}px, ${y}px) translate(-50%, -55%) scale(1.1) rotate(-3deg)`;
+  }
+
+  // Highlight the hovered zone directly (no React re-render)
+  function highlightZone(name) {
+    for (const [n, el] of Object.entries(zoneRefs.current)) {
+      if (n === name) {
+        el.style.outline = '2px solid #40e880';
+        el.style.background = 'rgba(64,232,128,0.13)';
+      } else {
+        el.style.outline = '';
+        el.style.background = '';
+      }
+    }
+  }
+  function clearHighlight() {
+    for (const el of Object.values(zoneRefs.current)) {
+      el.style.outline = '';
+      el.style.background = '';
+    }
   }
   // ────────────────────────────────────────────────────────────────
 
@@ -72,37 +96,40 @@ export default function GameRoom({ player, memberId, roomId, onExit }) {
   const unsubRoom = useRef(null);
   const unsubChat = useRef(null);
 
-  // ── Document-level drag listeners (active only while dragging) ──
+  // ── Document drag listeners (active only while dragging) ──
   useEffect(() => {
-    if (!dragging) return;
+    if (!dragging || !dragInfo.current) return;
+
+    // place ghost at initial point immediately
+    positionGhost(dragInfo.current.startX, dragInfo.current.startY);
+    highlightZone(zoneAt(dragInfo.current.startX, dragInfo.current.startY));
 
     function onMove(e) {
       e.preventDefault();
-      if (!dragInfo.current) return;
-      dragInfo.current.moved = true;
-      setGhost(g => g ? { ...g, x: e.clientX, y: e.clientY } : g);
-      setHoverZone(zoneAt(e.clientX, e.clientY));
+      const info = dragInfo.current;
+      if (!info) return;
+      info.moved = true;
+      positionGhost(e.clientX, e.clientY);           // direct DOM, no re-render
+      const z = zoneAt(e.clientX, e.clientY);
+      if (z !== info.hover) {                         // only touch DOM when zone changes
+        info.hover = z;
+        highlightZone(z);
+      }
     }
 
     function onUp(e) {
       const info = dragInfo.current;
       dragInfo.current = null;
-      setDragging(null);
-      setGhost(null);
-      setHoverZone(null);
+      clearHighlight();
+      setDragging(null);                              // unmounts ghost (single re-render)
       if (!info) return;
 
       const zone = zoneAt(e.clientX, e.clientY);
 
       if (info.moved && zone) {
-        // ── FREE DRAG DROP ──
         const card  = info.card;
         const limit = zone === 'front' ? 3 : zone === 'unplaced' ? 52 : 5;
-
-        // Save undo snapshot (captured at drag-start, always fresh)
         setUndoStack(prev => [...prev.slice(-19), info.handSnapshot]);
-
-        // Functional updater → always sees latest hand state, no stale closure
         setHand(prev => {
           const nh = {
             front:    prev.front.filter(c => c !== card),
@@ -112,16 +139,12 @@ export default function GameRoom({ player, memberId, roomId, onExit }) {
             done:     prev.done,
             foul:     prev.foul
           };
-          if (nh[zone].length < limit) {
-            nh[zone] = [...nh[zone], card];
-          }
+          if (nh[zone].length < limit) nh[zone] = [...nh[zone], card];
           return nh;
         });
         setSelectedCard(null);
         playSound('flip');
-
       } else if (!info.moved) {
-        // ── TAP (short press) → toggle selection ──
         setSelectedCard(prev => (prev === info.card ? null : info.card));
         playSound('click');
       }
@@ -133,18 +156,19 @@ export default function GameRoom({ player, memberId, roomId, onExit }) {
       document.removeEventListener('pointermove', onMove);
       document.removeEventListener('pointerup',   onUp);
     };
-  }, [dragging]); // re-run only when drag starts / stops
+  }, [dragging]);
   // ────────────────────────────────────────────────────────────────
 
-  // Pointer-down on a card → start drag
   function onCardPointerDown(e, card) {
     if (hand.done) return;
     e.preventDefault();
     e.stopPropagation();
     dragInfo.current = {
+      startX: e.clientX,
+      startY: e.clientY,
       moved: false,
       card,
-      // snapshot for undo (captured fresh here, no stale issue)
+      hover: null,
       handSnapshot: {
         front:    [...hand.front],
         mid:      [...hand.mid],
@@ -153,10 +177,8 @@ export default function GameRoom({ player, memberId, roomId, onExit }) {
       }
     };
     setDragging(card);
-    setGhost({ x: e.clientX, y: e.clientY, card });
   }
 
-  // Render a card (only needs onPointerDown; move/up handled by document)
   function renderCard(c, i) {
     const isRed = c.suit === '♥' || c.suit === '♦';
     return (
@@ -168,21 +190,13 @@ export default function GameRoom({ player, memberId, roomId, onExit }) {
           touchAction: 'none',
           userSelect:  'none',
           cursor:  dragging === c ? 'grabbing' : 'grab',
-          opacity: dragging === c ? 0.3 : 1,
-          transition: 'opacity 0.1s, transform 0.05s'
+          opacity: dragging === c ? 0.25 : 1
         }}
       >
         <span className="card-num">{c.rank}</span>
         <span className="card-suit">{c.suit}</span>
       </div>
     );
-  }
-
-  // Highlight style for a hovered drop zone
-  function hoverStyle(name) {
-    return hoverZone === name
-      ? { outline: '2px solid #40e880', background: 'rgba(64,232,128,0.13)' }
-      : undefined;
   }
 
   // 1. Web Audio
@@ -330,7 +344,7 @@ export default function GameRoom({ player, memberId, roomId, onExit }) {
     playSound('click');
   }
 
-  // Tap-to-move: move selected card into a zone (zone onClick)
+  // Tap-to-move (zone onClick)
   function moveCardTo(targetZone) {
     if (!selectedCard) return;
     pushUndo();
@@ -409,8 +423,8 @@ export default function GameRoom({ player, memberId, roomId, onExit }) {
   }
 
   const activeOpponents = players.filter(p => !p.isSpectator && !p.isQueue);
-  const seats     = Array(4).fill(null).map((_, i) => activeOpponents[i]);
-  const myChips   = (room && (room.scores || {})[myId]) || 0;
+  const seats   = Array(4).fill(null).map((_, i) => activeOpponents[i]);
+  const myChips = (room && (room.scores || {})[myId]) || 0;
 
   if (!room) {
     return <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100vh', color: 'var(--text-muted)' }}>กำลังเชื่อมต่อห้องเกม...</div>;
@@ -426,14 +440,20 @@ export default function GameRoom({ player, memberId, roomId, onExit }) {
         <div style={{ fontSize: '11px', color: 'var(--primary)', fontWeight: '700' }}>ห้อง: #{roomId} • อัตรา {room.rate} • รอบ {room.round || 0}</div>
       </div>
 
-      {/* GHOST CARD (follows finger during drag) */}
-      {ghost && (
+      {/* GHOST CARD — moved via direct transform (smooth, no re-render) */}
+      {dragging && (
         <div
-          className={`poker-card ${ghost.card.suit === '♥' || ghost.card.suit === '♦' ? 'red-card' : 'black-card'}`}
-          style={{ position: 'fixed', left: ghost.x, top: ghost.y, transform: 'translate(-50%,-55%) scale(1.12) rotate(-3deg)', pointerEvents: 'none', zIndex: 9999, opacity: 0.95, boxShadow: '0 14px 36px rgba(0,0,0,0.55)' }}
+          ref={ghostRef}
+          className={`poker-card ${dragging.suit === '♥' || dragging.suit === '♦' ? 'red-card' : 'black-card'}`}
+          style={{
+            position: 'fixed', left: 0, top: 0,
+            transform: dragInfo.current ? `translate(${dragInfo.current.startX}px, ${dragInfo.current.startY}px) translate(-50%, -55%) scale(1.1) rotate(-3deg)` : 'none',
+            pointerEvents: 'none', zIndex: 9999, opacity: 0.95,
+            boxShadow: '0 14px 36px rgba(0,0,0,0.55)', willChange: 'transform'
+          }}
         >
-          <span className="card-num">{ghost.card.rank}</span>
-          <span className="card-suit">{ghost.card.suit}</span>
+          <span className="card-num">{dragging.rank}</span>
+          <span className="card-suit">{dragging.suit}</span>
         </div>
       )}
 
@@ -520,7 +540,6 @@ export default function GameRoom({ player, memberId, roomId, onExit }) {
                   ref={el => regZone('back', el)}
                   className={`drop-zone ${selectedCard ? 'active-hover' : ''} ${hand.back.length === 5 ? 'pile-full' : ''}`}
                   onClick={() => moveCardTo('back')}
-                  style={hoverStyle('back')}
                 >
                   {hand.back.map((c, i) => renderCard(c, i))}
                   {hand.back.length === 0 && <span style={{ fontSize: '11px', color: 'rgba(255,255,255,0.15)', margin: 'auto' }}>ลาก/จิ้มเพื่อจัดกองหลัง</span>}
@@ -539,7 +558,6 @@ export default function GameRoom({ player, memberId, roomId, onExit }) {
                   ref={el => regZone('mid', el)}
                   className={`drop-zone ${selectedCard ? 'active-hover' : ''} ${hand.mid.length === 5 ? 'pile-full' : ''}`}
                   onClick={() => moveCardTo('mid')}
-                  style={hoverStyle('mid')}
                 >
                   {hand.mid.map((c, i) => renderCard(c, i))}
                   {hand.mid.length === 0 && <span style={{ fontSize: '11px', color: 'rgba(255,255,255,0.15)', margin: 'auto' }}>ลาก/จิ้มเพื่อจัดกองกลาง</span>}
@@ -558,7 +576,6 @@ export default function GameRoom({ player, memberId, roomId, onExit }) {
                   ref={el => regZone('front', el)}
                   className={`drop-zone ${selectedCard ? 'active-hover' : ''} ${hand.front.length === 3 ? 'pile-full' : ''}`}
                   onClick={() => moveCardTo('front')}
-                  style={hoverStyle('front')}
                 >
                   {hand.front.map((c, i) => renderCard(c, i))}
                   {hand.front.length === 0 && <span style={{ fontSize: '11px', color: 'rgba(255,255,255,0.15)', margin: 'auto' }}>ลาก/จิ้มเพื่อจัดกองหน้า</span>}
@@ -576,7 +593,7 @@ export default function GameRoom({ player, memberId, roomId, onExit }) {
               <div
                 ref={el => regZone('unplaced', el)}
                 className="drop-zone"
-                style={{ minHeight: '66px', display: 'flex', gap: '3px', flexWrap: 'wrap', ...(hoverStyle('unplaced') || {}) }}
+                style={{ minHeight: '66px', display: 'flex', gap: '3px', flexWrap: 'wrap' }}
                 onClick={() => moveCardTo('unplaced')}
               >
                 {hand.unplaced.map((c, i) => renderCard(c, i))}
