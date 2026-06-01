@@ -1,0 +1,60 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // ===========================================================
+    //  Members Collection Security Rules
+    // ===========================================================
+    match /members/{memberId} {
+      // Authenticated users can read member records (needed for lobby / leaderboards)
+      allow read: if request.auth != null;
+      
+      // Users can register their own accounts
+      allow create: if request.auth != null && request.auth.uid == memberId;
+      
+      // Users can modify details (like avatar) but CANNOT touch chips or totalProfit directly
+      allow update: if request.auth != null && request.auth.uid == memberId 
+                    && !request.resource.data.diff(resource.data).affectedKeys().hasAny(['chips', 'totalProfit']);
+      
+      // Only Cloud Functions or Admin SDK can delete members or write to chips
+      allow delete: if false;
+    }
+
+    // ===========================================================
+    //  Rooms Collection Security Rules
+    // ===========================================================
+    match /rooms/{roomId} {
+      allow read: if request.auth != null;
+      allow create: if request.auth != null;
+      
+      // Clients can modify presence state (join / watch), ready status, but NOT global scores or deals
+      allow update: if request.auth != null 
+                    && !request.resource.data.diff(resource.data).affectedKeys().hasAny(['scores', 'deals']);
+      
+      allow delete: if false; // Room cleanup is restricted to server functions/admin panel with custom auth
+
+      // -------- private deals --------
+      //  ONLY the target player can read their own deal (no other player can inspect other deals!)
+      match /deals/{playerId} {
+        allow read: if request.auth != null && request.auth.uid == playerId;
+        allow write: if false; // Written only by Cloud Functions during card deals
+      }
+
+      // -------- submitted hands --------
+      //  Players can write their own hand arrangement
+      //  Players can only read other players' hands AFTER round status is 'results' or 'confirming' (prevents peeking!)
+      match /hands/{playerId} {
+        allow read: if request.auth != null && (request.auth.uid == playerId || get(/databases/$(database)/documents/rooms/$(roomId)).data.status in ['results', 'confirming']);
+        allow write: if request.auth != null && request.auth.uid == playerId;
+        allow delete: if false;
+      }
+
+      // -------- chats --------
+      match /chat/{msgId} {
+        allow read: if request.auth != null;
+        allow create: if request.auth != null && request.resource.data.text.size() <= 200;
+        allow update, delete: if false;
+      }
+    }
+  }
+}

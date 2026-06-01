@@ -1,0 +1,646 @@
+/* ════════════════ 3 Kong Kan 2.0 Premium Design System ════════════════ */
+
+:root {
+  --primary: #D4AF37;       /* Metallic Gold */
+  --primary-glow: rgba(212, 175, 55, 0.35);
+  --secondary: #1E1E2E;     /* Midnight Navy */
+  --accent: #FF4D6D;        /* Rose Crimson */
+  --bg: #0A0A0F;            /* Deep Obsidian */
+  --card-bg: rgba(30, 30, 46, 0.76);
+  --glass: rgba(255, 255, 255, 0.06);
+  --line: rgba(212, 175, 55, 0.22);
+  --text-main: #fff8e8;
+  --text-muted: #bfc0d8;
+  --border-radius-sm: 8px;
+  --border-radius-md: 14px;
+  --border-radius-lg: 24px;
+  
+  --shadow-soft: 0 16px 42px rgba(0, 0, 0, 0.5);
+  --shadow-glow: 0 0 24px var(--primary-glow);
+}
+
+/* Reset & Global Styles */
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+  -webkit-tap-highlight-color: transparent;
+}
+
+html, body {
+  font-family: 'Kanit', sans-serif;
+  background: 
+    radial-gradient(circle at 50% 15%, rgba(255, 77, 109, 0.16), transparent 35%),
+    radial-gradient(circle at 15% 15%, rgba(212, 175, 55, 0.12), transparent 30%),
+    linear-gradient(180deg, #12121d 0%, var(--bg) 60%, #050507 100%);
+  color: var(--text-main);
+  min-height: 100vh;
+  overflow-x: hidden;
+  user-select: none;
+}
+
+/* Dynamic Viewport Notch Safety (iOS & modern mobiles) */
+.safe-area-bottom {
+  padding-bottom: calc(16px + env(safe-area-inset-bottom, 16px));
+}
+
+.safe-area-top {
+  padding-top: calc(10px + env(safe-area-inset-top, 0px));
+}
+
+/* Glassmorphism Panels */
+.glass-panel {
+  background: var(--card-bg);
+  border: 1px solid var(--line);
+  box-shadow: var(--shadow-soft);
+  backdrop-filter: blur(18px);
+  -webkit-backdrop-filter: blur(18px);
+  border-radius: var(--border-radius-md);
+  transition: transform 0.2s, box-shadow 0.2s;
+}
+
+/* Scrollbars styling */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: rgba(0, 0, 0, 0.2);
+}
+::-webkit-scrollbar-thumb {
+  background: var(--line);
+  border-radius: 999px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: var(--primary);
+}
+
+/* ── HEADER ── */
+.app-header {
+  background: linear-gradient(180deg, rgba(30,30,46,0.96), rgba(10,10,15,0.85));
+  border-bottom: 1px solid var(--line);
+  padding: 12px 16px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  position: sticky;
+  top: 0;
+  z-index: 100;
+  box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+}
+
+.header-logo {
+  font-size: 20px;
+  font-weight: 900;
+  color: var(--primary);
+  letter-spacing: 0.5px;
+  text-shadow: 0 0 12px var(--primary-glow);
+  flex: 1;
+}
+
+/* ── BUTTONS ── */
+.btn-premium {
+  background: linear-gradient(180deg, #f5d46b, #b88a13);
+  color: #23180a;
+  border: none;
+  font-family: 'Kanit', sans-serif;
+  font-weight: 800;
+  cursor: pointer;
+  border-radius: var(--border-radius-sm);
+  transition: all 0.15s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+  box-shadow: 0 4px 0 #76560b, 0 8px 20px rgba(212, 175, 55, 0.2);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  outline: none;
+}
+
+.btn-premium:active {
+  transform: translateY(2px);
+  box-shadow: 0 2px 0 #76560b, 0 4px 10px rgba(212, 175, 55, 0.15);
+}
+
+.btn-premium:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  transform: none;
+  box-shadow: none;
+}
+
+.btn-secondary {
+  background: var(--glass);
+  border: 1px solid var(--line);
+  color: var(--text-main);
+  font-family: 'Kanit', sans-serif;
+  font-weight: 700;
+  cursor: pointer;
+  border-radius: var(--border-radius-sm);
+  transition: all 0.15s;
+}
+
+.btn-secondary:hover {
+  background: rgba(255, 255, 255, 0.12);
+  border-color: var(--primary);
+}
+
+.btn-danger {
+  background: linear-gradient(180deg, #ff6d86, #c92c4a);
+  color: #fff;
+  border: none;
+  box-shadow: 0 4px 0 #83182e;
+  font-family: 'Kanit', sans-serif;
+  font-weight: 800;
+  cursor: pointer;
+  border-radius: var(--border-radius-sm);
+}
+
+.btn-danger:active {
+  transform: translateY(2px);
+  box-shadow: 0 2px 0 #83182e;
+}
+
+/* ── AUTH PAGES ── */
+.auth-container {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 100vh;
+  padding: 24px;
+}
+
+.auth-card {
+  width: 100%;
+  max-width: 410px;
+  padding: 32px 28px;
+}
+
+.form-group {
+  margin-bottom: 18px;
+}
+
+.form-group label {
+  display: block;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--text-muted);
+  margin-bottom: 6px;
+  letter-spacing: 0.5px;
+}
+
+.form-input {
+  width: 100%;
+  padding: 12px 14px;
+  background: rgba(10, 10, 15, 0.65);
+  border: 1.5px solid rgba(212, 175, 55, 0.2);
+  border-radius: var(--border-radius-sm);
+  color: #fff;
+  font-family: 'Kanit', sans-serif;
+  font-size: 15px;
+  outline: none;
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+.form-input:focus {
+  border-color: var(--primary);
+  box-shadow: 0 0 0 3px rgba(212, 175, 55, 0.15);
+}
+
+.error-banner {
+  background: rgba(255, 77, 109, 0.16);
+  border: 1px solid rgba(255, 77, 109, 0.35);
+  border-radius: var(--border-radius-sm);
+  color: #ff9aac;
+  font-size: 12px;
+  font-weight: 700;
+  padding: 10px 14px;
+  text-align: center;
+  margin-top: 12px;
+}
+
+/* ── LOBBY ROOMS ── */
+.lobby-layout {
+  max-width: 760px;
+  margin: 0 auto;
+  padding: 16px;
+}
+
+.lobby-hero {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 18px;
+  margin-bottom: 16px;
+}
+
+.hero-avatar {
+  font-size: 34px;
+  width: 64px;
+  height: 64px;
+  border-radius: 18px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(180deg, rgba(212, 175, 55, 0.25), rgba(255, 77, 109, 0.15));
+  border: 1px solid var(--line);
+  box-shadow: var(--shadow-glow);
+}
+
+.hero-info {
+  flex: 1;
+}
+
+.hero-name {
+  font-size: 19px;
+  font-weight: 900;
+  color: #fff;
+}
+
+.hero-stats {
+  font-size: 12px;
+  color: var(--text-muted);
+  font-weight: 700;
+  margin-top: 2px;
+}
+
+.xp-bar {
+  height: 6px;
+  background: rgba(255, 255, 255, 0.08);
+  border-radius: 999px;
+  overflow: hidden;
+  margin-top: 6px;
+}
+
+.xp-progress {
+  height: 100%;
+  background: linear-gradient(90deg, var(--accent), var(--primary));
+  border-radius: 999px;
+  transition: width 0.3s;
+}
+
+.hero-chips {
+  font-size: 18px;
+  font-weight: 900;
+  color: #ffe08a;
+  background: rgba(0, 0, 0, 0.25);
+  border: 1px solid var(--line);
+  padding: 8px 14px;
+  border-radius: var(--border-radius-sm);
+}
+
+.rooms-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 12px;
+  margin-top: 14px;
+}
+
+.room-card {
+  border-radius: var(--border-radius-md);
+  overflow: hidden;
+}
+
+.room-bar {
+  padding: 8px 12px;
+  font-size: 11px;
+  font-weight: 800;
+  display: flex;
+  justify-content: space-between;
+  background: linear-gradient(90deg, rgba(212, 175, 55, 0.28), rgba(255, 77, 109, 0.18));
+}
+
+.room-card.playing .room-bar {
+  background: linear-gradient(90deg, rgba(50, 232, 117, 0.25), rgba(7, 49, 31, 0.25));
+  color: #60e890;
+}
+
+.room-body {
+  padding: 12px;
+}
+
+.room-code {
+  font-size: 16px;
+  font-weight: 900;
+  color: #ffe08a;
+  letter-spacing: 0.5px;
+}
+
+.room-title {
+  font-size: 11px;
+  color: var(--text-muted);
+  font-weight: 700;
+  margin-bottom: 8px;
+}
+
+.room-rate-badge {
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(212, 175, 55, 0.15);
+  padding: 6px;
+  font-size: 10px;
+  font-weight: 700;
+  border-radius: 8px;
+  margin-bottom: 8px;
+}
+
+.room-rate-badge b {
+  color: var(--primary);
+}
+
+.room-seats {
+  display: flex;
+  gap: 4px;
+  margin-bottom: 10px;
+}
+
+.seat-av {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1.5px dashed rgba(255, 255, 255, 0.15);
+  color: rgba(255, 255, 255, 0.25);
+  font-size: 12px;
+}
+
+.seat-av.filled {
+  background: rgba(212, 175, 55, 0.14);
+  border: 1.5px solid rgba(212, 175, 55, 0.35);
+  color: #fff;
+  font-size: 15px;
+}
+
+/* ── POKER TABLE ── */
+.table-felt {
+  flex: 1;
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px 16px;
+  min-height: 200px;
+  overflow: hidden;
+}
+
+.table-oval {
+  width: 98%;
+  height: 90%;
+  background: 
+    radial-gradient(ellipse at 50% 42%, rgba(34, 132, 79, 0.94), rgba(7, 49, 31, 0.92) 58%, rgba(3, 20, 16, 0.99) 100%),
+    linear-gradient(135deg, rgba(255,255,255,0.06), transparent);
+  border-radius: 150px;
+  border: 12px solid #28140c;
+  box-shadow: 
+    inset 0 0 55px rgba(0,0,0,0.85),
+    0 20px 50px rgba(0,0,0,0.65),
+    0 0 0 3px var(--primary),
+    var(--shadow-glow);
+  transform: perspective(800px) rotateX(6deg);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+}
+
+.table-logo-text {
+  font-size: 15px;
+  color: rgba(212, 175, 55, 0.2);
+  font-weight: 900;
+  letter-spacing: 7px;
+  text-transform: uppercase;
+  text-shadow: 0 0 12px rgba(212, 175, 55, 0.1);
+  pointer-events: none;
+}
+
+/* Player boxes placed on the felt */
+.felt-player-box {
+  position: absolute;
+  background: linear-gradient(180deg, rgba(30, 30, 46, 0.94), rgba(10, 10, 15, 0.88));
+  border: 1px solid var(--line);
+  border-radius: var(--border-radius-md);
+  padding: 8px 10px;
+  box-shadow: 0 10px 24px rgba(0, 0, 0, 0.55);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 3px;
+  min-width: 90px;
+  max-width: 110px;
+  z-index: 20;
+}
+
+/* Seat positions absolute layout */
+.felt-pos-top   { top: -20px; left: 50%; transform: translateX(-50%); }
+.felt-pos-left  { left: -10px; top: 45%; transform: translateY(-50%) scale(0.9); }
+.felt-pos-right { right: -10px; top: 45%; transform: translateY(-50%) scale(0.9); }
+
+.felt-av {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, rgba(255,220,80,0.25), rgba(200,140,20,0.15));
+  border: 2px solid rgba(255,220,80,0.45);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 20px;
+}
+
+.felt-nm {
+  font-size: 11px;
+  font-weight: 800;
+  color: var(--text-main);
+  text-align: center;
+  max-width: 80px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.felt-chips {
+  font-size: 10px;
+  font-weight: 900;
+  color: #ffe08a;
+  background: rgba(0,0,0,0.3);
+  padding: 1px 6px;
+  border-radius: var(--border-radius-sm);
+  border: 1px solid rgba(212, 175, 55, 0.15);
+}
+
+/* ── CARDS ── */
+.poker-card {
+  width: 52px;
+  height: 72px;
+  background: #fff;
+  border-radius: var(--border-radius-sm);
+  position: relative;
+  font-weight: 900;
+  border: 1px solid rgba(0,0,0,0.15);
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.35);
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  padding: 5px;
+  cursor: grab;
+  user-select: none;
+  transition: transform 0.15s, box-shadow 0.15s;
+}
+
+.poker-card.red-card { color: #d11f1f; }
+.poker-card.black-card { color: #1a1a1a; }
+
+.poker-card:active {
+  cursor: grabbing;
+  transform: scale(1.08) translateY(-4px);
+  box-shadow: 0 8px 18px rgba(0, 0, 0, 0.45);
+  z-index: 50;
+}
+
+.card-num {
+  font-size: 17px;
+  font-weight: 900;
+  line-height: 0.9;
+}
+
+.card-suit {
+  font-size: 22px;
+  align-self: flex-end;
+  line-height: 1;
+}
+
+/* Rearranging Zone styling */
+.hand-pile-container {
+  display: flex;
+  gap: 6px;
+  align-items: stretch;
+  background: rgba(0,0,0,0.15);
+  padding: 6px;
+  border-radius: var(--border-radius-sm);
+}
+
+.hand-pile-label {
+  writing-mode: vertical-lr;
+  font-size: 10px;
+  font-weight: 800;
+  color: var(--primary);
+  text-align: center;
+  letter-spacing: 1px;
+  opacity: 0.8;
+}
+
+.drop-zone {
+  flex: 1;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  min-height: 80px;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1.5px dashed rgba(212, 175, 55, 0.15);
+  border-radius: var(--border-radius-sm);
+  padding: 5px;
+  align-content: flex-start;
+  transition: all 0.15s;
+}
+
+.drop-zone.active-hover {
+  border-color: var(--primary);
+  background: rgba(212, 175, 55, 0.08);
+}
+
+.drop-zone.pile-full {
+  border-color: rgba(50, 232, 117, 0.35);
+  background: rgba(50, 232, 117, 0.04);
+}
+
+/* ── CHAT Quick Actions panel ── */
+.quick-emoji-row {
+  position: fixed;
+  left: 50%;
+  bottom: calc(76px + env(safe-area-inset-bottom, 0px));
+  transform: translateX(-50%);
+  z-index: 60;
+  display: flex;
+  gap: 6px;
+  background: rgba(10, 10, 15, 0.82);
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  padding: 5px;
+  box-shadow: var(--shadow-soft);
+  backdrop-filter: blur(14px);
+}
+
+.quick-emoji-btn {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  border: 1px solid rgba(255,255,255,0.06);
+  background: rgba(255,255,255,0.08);
+  font-size: 16px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: transform 0.1s;
+}
+
+.quick-emoji-btn:active {
+  transform: scale(0.9);
+}
+
+/* ── BATTLE AND SCORING SPECIAL EFFECT ANIMATIONS ── */
+
+@keyframes scorePopUp {
+  0% { transform: scale(0.4) rotate(-5deg); opacity: 0; }
+  60% { transform: scale(1.15) rotate(3deg); opacity: 1; }
+  100% { transform: scale(1) rotate(0deg); }
+}
+
+.animate-pop-up {
+  animation: scorePopUp 0.65s cubic-bezier(0.175, 0.885, 0.32, 1.275) both;
+}
+
+.glow-bonus {
+  animation: bonusGoldenGlow 1.8s ease-in-out infinite;
+}
+
+@keyframes bonusGoldenGlow {
+  0%, 100% { box-shadow: 0 0 6px 1px rgba(212, 175, 55, 0.35); }
+  50% { box-shadow: 0 0 20px 4px rgba(212, 175, 55, 0.75); }
+}
+
+/* Responsive card sizing */
+@media (max-width: 430px) {
+  .poker-card {
+    width: calc((100vw - 90px) / 5);
+    max-width: 50px;
+    height: auto;
+    aspect-ratio: 52/72;
+    padding: 3px;
+  }
+  
+  .card-num {
+    font-size: 14px;
+  }
+  
+  .card-suit {
+    font-size: 18px;
+  }
+  
+  .felt-player-box {
+    transform: scale(0.85);
+  }
+  
+  .felt-pos-top {
+    transform: translateX(-50%) scale(0.85);
+  }
+  
+  .felt-pos-left {
+    transform: translateY(-50%) scale(0.78);
+  }
+  
+  .felt-pos-right {
+    transform: translateY(-50%) scale(0.78);
+  }
+}
