@@ -85,6 +85,9 @@ export default function GameRoom({ player, memberId, roomId, onExit }) {
   const [speechMuted, setSpeechMuted] = useState(false);
   const audioCtx = useRef(null);
 
+  // Live chip balance for the current member (header display)
+  const [myChips, setMyChips] = useState(0);
+
   // Chat & Emoji
   const [chatOpen, setChatOpen]       = useState(false);
   const [chatMsg, setChatMsg]         = useState('');
@@ -258,6 +261,15 @@ export default function GameRoom({ player, memberId, roomId, onExit }) {
           setHand({ front: [], mid: [], back: [], unplaced: myDeal, done: false, foul: false });
           playSound('deal');
         }
+
+        // ── Host auto-settle: when every active player has submitted, settle chips + go to results ──
+        if (me.isHost) {
+          const activeP = pList.filter(p => !p.isSpectator && !p.isQueue);
+          const allDone = activeP.length >= 2 && activeP.every(p => (d.hands || {})[p.name]?.done);
+          if (allDone && d.status === 'playing' && d.settledRound !== d.round) {
+            settleScores();
+          }
+        }
       }
       pList.forEach(p => {
         if (p.emojiReaction && p.name !== player.name) {
@@ -286,6 +298,74 @@ export default function GameRoom({ player, memberId, roomId, onExit }) {
     const id = Math.random();
     setFloatingEmojis(prev => [...prev, { id, avatar, emoji }]);
     setTimeout(() => setFloatingEmojis(prev => prev.filter(x => x.id !== id)), 1500);
+  }
+
+  // Live chip balance subscription for header
+  useEffect(() => {
+    if (!memberId) return;
+    const unsub = db.collection('members').doc(memberId).onSnapshot(
+      s => { if (s.exists) setMyChips(s.data().chips || 0); },
+      () => {}
+    );
+    return () => unsub();
+  }, [memberId]);
+
+  // ── Settle round: compute scores + update chips atomically (host only) ──
+  async function settleScores() {
+    const roomRef = db.collection('rooms').doc(roomId);
+    try {
+      await db.runTransaction(async (tx) => {
+        const fresh = await tx.get(roomRef);
+        if (!fresh.exists) return;
+        const fd = fresh.data();
+        if (fd.status !== 'playing') return;          // someone already settled
+        if (fd.settledRound === fd.round) return;     // this round already settled
+
+        const playingP = Object.entries(fd.players || {})
+          .map(([id, v]) => ({ id, ...v }))
+          .filter(p => !p.isSpectator && !p.isQueue);
+
+        if (playingP.length < 2) return;
+        if (!playingP.every(p => (fd.hands || {})[p.name]?.done)) return;
+
+        // Reads BEFORE writes (Firestore transaction rule)
+        const memberSnaps = {};
+        for (const p of playingP) {
+          memberSnaps[p.id] = await tx.get(db.collection('members').doc(p.id));
+        }
+
+        // Score exactly as shown on the results screen
+        const scores = calcScores(playingP, fd.hands || {});
+        const newScores = { ...(fd.scores || {}) };
+
+        for (const p of playingP) {
+          const sc  = scores.find(s => s.name === p.name);
+          const amt = Math.round((sc?.roundScore || 0) * 100) / 100;
+
+          const mSnap = memberSnaps[p.id];
+          const cur   = mSnap.exists ? (mSnap.data().chips || 0) : 0;
+          const finalChips = Math.round((cur + amt) * 100) / 100;
+
+          // set+merge → safe whether the member doc exists or not
+          tx.set(db.collection('members').doc(p.id), {
+            chips: finalChips,
+            txns: firebase.firestore.FieldValue.arrayUnion({
+              t: Date.now(),
+              ty: amt >= 0 ? 'win' : 'lose',
+              amt: Math.abs(amt),
+              bal: finalChips,
+              note: `รอบ ${fd.round} ห้อง #${roomId}`
+            })
+          }, { merge: true });
+
+          newScores[p.id] = Math.round(((fd.scores?.[p.id] || 0) + amt) * 100) / 100;
+        }
+
+        tx.update(roomRef, { scores: newScores, status: 'results', settledRound: fd.round });
+      });
+    } catch (e) {
+      // transaction conflicts retry automatically; ignore final failure
+    }
   }
 
   // 4. Presence
@@ -424,7 +504,6 @@ export default function GameRoom({ player, memberId, roomId, onExit }) {
 
   const activeOpponents = players.filter(p => !p.isSpectator && !p.isQueue);
   const seats   = Array(4).fill(null).map((_, i) => activeOpponents[i]);
-  const myChips = (room && (room.scores || {})[myId]) || 0;
 
   if (!room) {
     return <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100vh', color: 'var(--text-muted)' }}>กำลังเชื่อมต่อห้องเกม...</div>;
@@ -449,7 +528,8 @@ export default function GameRoom({ player, memberId, roomId, onExit }) {
             position: 'fixed', left: 0, top: 0,
             transform: dragInfo.current ? `translate(${dragInfo.current.startX}px, ${dragInfo.current.startY}px) translate(-50%, -55%) scale(1.1) rotate(-3deg)` : 'none',
             pointerEvents: 'none', zIndex: 9999, opacity: 0.95,
-            boxShadow: '0 14px 36px rgba(0,0,0,0.55)', willChange: 'transform'
+            boxShadow: '0 14px 36px rgba(0,0,0,0.55)', willChange: 'transform',
+            transition: 'none'
           }}
         >
           <span className="card-num">{dragging.rank}</span>
