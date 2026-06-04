@@ -273,7 +273,7 @@ export default function GameRoom({ player, memberId, roomId, onExit }) {
         const myDeal = (d.deals || {})[me.id] || [];
         const submitted = (d.hands || {})[me.name] || (d.hands || {})[me.id];
         if (myDeal.length > 0 && !submitted && handRef.current.unplaced.length === 0 && handRef.current.front.length === 0 && handRef.current.mid.length === 0 && handRef.current.back.length === 0) {
-          setHand({ front: [], mid: [], back: [], unplaced: myDeal, done: false, foul: false });
+          setHand({ front: [], mid: [], back: [], unplaced: [...myDeal].sort((a, b) => a.val - b.val), done: false, foul: false });
           playSound('deal');
         }
         if (me.isHost) {
