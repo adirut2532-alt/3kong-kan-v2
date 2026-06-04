@@ -202,8 +202,8 @@ export default function GameRoom({ player, memberId, roomId, onExit }) {
         onPointerDown={(e) => onCardPointerDown(e, c, zone, i)}
         style={{ touchAction: 'none', userSelect: 'none', cursor: 'grab' }}
       >
-        <span className="card-num">{c.rank}</span>
-        <span className="card-suit">{c.suit}</span>
+        <span className="card-num" style={{ fontSize: '20px', fontWeight: 900, lineHeight: 1 }}>{c.rank}</span>
+        <span className="card-suit" style={{ fontSize: '26px', lineHeight: 1 }}>{c.suit}</span>
       </div>
     );
   }
@@ -519,8 +519,8 @@ export default function GameRoom({ player, memberId, roomId, onExit }) {
           boxShadow: '0 14px 36px rgba(0,0,0,0.55)', willChange: 'transform', transition: 'none'
         }}
       >
-        <span ref={ghostNumRef} className="card-num"></span>
-        <span ref={ghostSuitRef} className="card-suit"></span>
+        <span ref={ghostNumRef} className="card-num" style={{ fontSize: '20px', fontWeight: 900, lineHeight: 1 }}></span>
+        <span ref={ghostSuitRef} className="card-suit" style={{ fontSize: '26px', lineHeight: 1 }}></span>
       </div>
 
       {/* FLOATING EMOJIS */}
@@ -599,25 +599,25 @@ export default function GameRoom({ player, memberId, roomId, onExit }) {
             {/* 3 Drop Zones */}
             <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', marginBottom: '8px' }}>
 
-              {/* BACK */}
+              {/* FRONT (3) — บนสุด */}
               <div className="hand-pile-container">
-                <span className="hand-pile-label">หลัง (5)</span>
+                <span className="hand-pile-label">หน้า (3)</span>
                 <div
-                  data-zone="back"
-                  className={`drop-zone ${selectedCard ? 'active-hover' : ''} ${hand.back.length === 5 ? 'pile-full' : ''}`}
-                  onClick={() => moveCardTo('back')}
+                  data-zone="front"
+                  className={`drop-zone ${selectedCard ? 'active-hover' : ''} ${hand.front.length === 3 ? 'pile-full' : ''}`}
+                  onClick={() => moveCardTo('front')}
                 >
-                  {hand.back.map((c, i) => renderCard(c, i, 'back'))}
-                  {hand.back.length === 0 && <span style={{ fontSize: '11px', color: 'rgba(255,255,255,0.15)', margin: 'auto' }}>ลาก/จิ้มเพื่อจัดกองหลัง</span>}
+                  {hand.front.map((c, i) => renderCard(c, i, 'front'))}
+                  {hand.front.length === 0 && <span style={{ fontSize: '11px', color: 'rgba(255,255,255,0.15)', margin: 'auto' }}>ลาก/จิ้มเพื่อจัดกองหน้า</span>}
                 </div>
-                {hand.back.length === 5 && (
+                {hand.front.length === 3 && (
                   <span style={{ alignSelf: 'center', fontSize: '9px', background: 'var(--glass)', border: '1px solid var(--line)', padding: '2px 4px', borderRadius: '4px', color: 'var(--primary)' }}>
-                    {evalHand(hand.back).name}
+                    {evalHand(hand.front).name}
                   </span>
                 )}
               </div>
 
-              {/* MID */}
+              {/* MID (5) */}
               <div className="hand-pile-container">
                 <span className="hand-pile-label">กลาง (5)</span>
                 <div
@@ -635,20 +635,20 @@ export default function GameRoom({ player, memberId, roomId, onExit }) {
                 )}
               </div>
 
-              {/* FRONT */}
+              {/* BACK (5) — ล่างสุด */}
               <div className="hand-pile-container">
-                <span className="hand-pile-label">หน้า (3)</span>
+                <span className="hand-pile-label">หลัง (5)</span>
                 <div
-                  data-zone="front"
-                  className={`drop-zone ${selectedCard ? 'active-hover' : ''} ${hand.front.length === 3 ? 'pile-full' : ''}`}
-                  onClick={() => moveCardTo('front')}
+                  data-zone="back"
+                  className={`drop-zone ${selectedCard ? 'active-hover' : ''} ${hand.back.length === 5 ? 'pile-full' : ''}`}
+                  onClick={() => moveCardTo('back')}
                 >
-                  {hand.front.map((c, i) => renderCard(c, i, 'front'))}
-                  {hand.front.length === 0 && <span style={{ fontSize: '11px', color: 'rgba(255,255,255,0.15)', margin: 'auto' }}>ลาก/จิ้มเพื่อจัดกองหน้า</span>}
+                  {hand.back.map((c, i) => renderCard(c, i, 'back'))}
+                  {hand.back.length === 0 && <span style={{ fontSize: '11px', color: 'rgba(255,255,255,0.15)', margin: 'auto' }}>ลาก/จิ้มเพื่อจัดกองหลัง</span>}
                 </div>
-                {hand.front.length === 3 && (
+                {hand.back.length === 5 && (
                   <span style={{ alignSelf: 'center', fontSize: '9px', background: 'var(--glass)', border: '1px solid var(--line)', padding: '2px 4px', borderRadius: '4px', color: 'var(--primary)' }}>
-                    {evalHand(hand.front).name}
+                    {evalHand(hand.back).name}
                   </span>
                 )}
               </div>
@@ -697,7 +697,7 @@ export default function GameRoom({ player, memberId, roomId, onExit }) {
             {/* BUTTONS */}
             <div style={{ display: 'flex', gap: '6px' }}>
               <button className="btn-secondary" style={{ flex: 1, padding: '10px' }} onClick={handleAutoArrange}><Sparkles size={14} style={{ marginRight: '3px' }} /> จัดให้</button>
-              <button className="btn-secondary" style={{ padding: '10px', fontSize: '16px', fontWeight: '800' }} onClick={handleSwapMidBack} title="สลับกลาง ↔ ล่าง">⇅</button>
+              <button className="btn-secondary" style={{ padding: '10px', fontSize: '13px', fontWeight: '800', whiteSpace: 'nowrap' }} onClick={handleSwapMidBack} title="สลับไพ่กองกลาง ↔ กองหลัง">⇅ กลาง/หลัง</button>
               <button className="btn-secondary" style={{ padding: '10px' }} onClick={handleUndo}><Undo2 size={14} /></button>
               <button className="btn-secondary" style={{ padding: '10px' }} onClick={handleReset}><RotateCcw size={14} /></button>
               <button className="btn-premium" style={{ flex: 2, padding: '10px', fontSize: '15px' }} onClick={handleSubmitHand} disabled={hand.done}>
@@ -710,7 +710,7 @@ export default function GameRoom({ player, memberId, roomId, onExit }) {
 
       {/* EMOJI DOCK */}
       {room.status === 'playing' && (
-        <div className="quick-emoji-row">
+        <div className="quick-emoji-row" style={{ position: 'static', display: 'flex', flexWrap: 'wrap', justifyContent: 'center', gap: '6px', padding: '8px 10px', margin: '0 0 8px', background: 'rgba(0,0,0,0.25)', borderRadius: '12px' }}>
           {['😂','😭','🔥','💸','🐉','👑','🎉'].map(emoji => (
             <button key={emoji} className="quick-emoji-btn" onClick={() => handleSendEmoji(emoji)}>{emoji}</button>
           ))}
