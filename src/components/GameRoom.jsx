@@ -261,6 +261,14 @@ export default function GameRoom({ player, memberId, roomId, onExit }) {
       if (me) { setMyId(me.id); setIsHost(me.isHost || false); }
       setPlayers(pList);
 
+      // Reset hand when round ends so next deal works cleanly
+      if (d.status !== 'playing') {
+        const h = handRef.current;
+        if (h.front.length > 0 || h.mid.length > 0 || h.back.length > 0 || h.unplaced.length > 0 || h.done) {
+          setHand({ front: [], mid: [], back: [], unplaced: [], done: false, foul: false });
+        }
+      }
+
       if (d.status === 'playing' && me) {
         const myDeal = (d.deals || {})[me.id] || [];
         const submitted = (d.hands || {})[me.name] || (d.hands || {})[me.id];
