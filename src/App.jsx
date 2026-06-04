@@ -23,7 +23,7 @@ export { firebase };
 import Login from './components/Login.jsx';
 import Register from './components/Register.jsx';
 import Lobby from './components/Lobby.jsx';
-import GameRoom from './components/GameRoom';
+import GameRoom from './components/GameRoom ';
 import AdminPanel from './components/AdminPanel.jsx';
 
 export default function App() {
