@@ -1,69 +1,59 @@
-import React, { useState, useEffect, useRef, useMemo } from 'react';
-import { db } from '../App.jsx';
+import React, { useState, useEffect, useRef } from 'react';
+import { db, firebase } from '../App.jsx';
 import {
   evalHand,
-  bonus,
   validArr,
   isDragonHand,
   calcScores,
-  buildMatchups,
   SUIT_RANK
 } from '../utils/ruleEngine.js';
-import {
-  aiArrange,
-  aiAnalysis,
-  handPower,
-  gradeFromPower
-} from '../utils/aiEngine.js';
 import { 
-  ShieldAlert, Undo2, RotateCcw, Sparkles, MessageCircle, 
-  Send, Users, Award, Play, Home, Volume2, VolumeX, Eye
+  Undo2, RotateCcw, MessageCircle, Send
 } from 'lucide-react';
-
+ 
 export default function GameRoom({ player, memberId, roomId, onExit }) {
   // Live Room State
   const [room, setRoom]       = useState(null);
   const [players, setPlayers] = useState([]);
   const [myId, setMyId]       = useState('');
   const [isHost, setIsHost]   = useState(false);
-
+ 
   // Player Hand State
   const [hand, setHand]                 = useState({ front: [], mid: [], back: [], unplaced: [], done: false, foul: false });
   const [selectedCard, setSelectedCard] = useState(null);
   const [undoStack, setUndoStack]       = useState([]);
-  const [aiMode, setAiMode]             = useState('balanced');
-
+ 
   // Keep a live ref to hand so the drag handlers (attached to document) always
   // read the freshest hand without re-subscribing.
   const handRef = useRef(hand);
   useEffect(() => { handRef.current = hand; }, [hand]);
-
+ 
   // Drag ghost refs
   const ghostRef     = useRef(null);
   const ghostNumRef  = useRef(null);
   const ghostSuitRef = useRef(null);
-
+ 
   // Sound & Speech
-  const [soundVolume, setSoundVolume] = useState(0.5);
-  const [speechMuted, setSpeechMuted] = useState(false);
+  const [soundVolume] = useState(0.5);
   const audioCtx = useRef(null);
-
+ 
   // Live chip balance for the current member (header display)
   const [myChips, setMyChips] = useState(0);
-
+ 
   // Chat & Emoji
   const [chatOpen, setChatOpen]       = useState(false);
   const [chatMsg, setChatMsg]         = useState('');
   const [chatList, setChatList]       = useState([]);
   const [unreadCount, setUnreadCount] = useState(0);
   const [floatingEmojis, setFloatingEmojis] = useState([]);
-
+ 
   // Subscriptions
   const unsubRoom = useRef(null);
   const unsubChat = useRef(null);
-
+  const initializedRoundRef = useRef(0);
+ 
   const MAX = { front: 3, mid: 5, back: 5 };
-
+ 
   // ── autoFill: if exactly one row is empty and unplaced holds exactly its size, drop them in (v1) ──
   function autoFillInto(h) {
     const empty   = ['front', 'mid', 'back'].filter(r => h[r].length === 0);
@@ -73,8 +63,8 @@ export default function GameRoom({ player, memberId, roomId, onExit }) {
       if (h.unplaced.length === MAX[r]) { h[r] = [...h.unplaced]; h.unplaced = []; }
     }
   }
-
-  // ── dropCard: ported 1:1 from v1 — exact card swap, index-preserving, bump-when-full ──
+ 
+  // ── dropCard: exact card swap, index-preserving, bump-when-full ──
   function dropCard(fromZone, fromIdx, toZone, toIdx) {
     setHand(prev => {
       const h = {
@@ -86,47 +76,53 @@ export default function GameRoom({ player, memberId, roomId, onExit }) {
         foul:     prev.foul
       };
       const fromArr = fromZone === 'unplaced' ? h.unplaced : h[fromZone];
+      const toArr = toZone === 'unplaced' ? h.unplaced : h[toZone];
       const card = fromArr[fromIdx];
       if (!card) return prev;
-
+ 
       // dropped directly onto a card in the target → swap those two, keep positions
-      if (toZone !== 'unplaced' && toIdx !== undefined && toIdx >= 0) {
-        const target = h[toZone][toIdx];
-        if (target) {
-          fromArr.splice(fromIdx, 1);
-          fromArr.splice(fromIdx, 0, target);
-          h[toZone][toIdx] = card;
+      if (toIdx !== undefined && toIdx >= 0 && toIdx < toArr.length) {
+        const target = toArr[toIdx];
+        if (target && target !== card) {
+          if (fromZone === toZone) {
+            fromArr[fromIdx] = target;
+            fromArr[toIdx] = card;
+          } else {
+            fromArr[fromIdx] = target;
+            toArr[toIdx] = card;
+          }
           autoFillInto(h);
           return h;
         }
       }
-
+ 
       // target full → push its last card back into the source slot
-      if (toZone !== 'unplaced' && h[toZone].length >= MAX[toZone]) {
-        const d = h[toZone].pop();
-        fromArr.splice(fromIdx, 1);
-        h[toZone].push(card);
-        fromArr.splice(fromIdx, 0, d);
-      } else {
-        fromArr.splice(fromIdx, 1);
-        if (toZone === 'unplaced') h.unplaced.push(card);
-        else h[toZone].push(card);
+      if (fromZone !== toZone) {
+        if (toZone !== 'unplaced' && h[toZone].length >= MAX[toZone]) {
+          const d = h[toZone].pop();
+          fromArr.splice(fromIdx, 1);
+          h[toZone].push(card);
+          fromArr.splice(fromIdx, 0, d);
+        } else {
+          fromArr.splice(fromIdx, 1);
+          toArr.push(card);
+        }
       }
       autoFillInto(h);
       return h;
     });
   }
-
+ 
   // ── Start drag (v1-style, pointer events). Ghost moves via DOM; React renders once on drop. ──
   function onCardPointerDown(e, card, zone, idx) {
     if (hand.done) return;
     e.preventDefault();
     e.stopPropagation();
-
+ 
     const el    = e.currentTarget;
     const isRed = card.suit === '♥' || card.suit === '♦';
     el.style.opacity = '0.3';
-
+ 
     const g = ghostRef.current;
     if (g) {
       g.className = `poker-card ${isRed ? 'red-card' : 'black-card'}`;
@@ -135,14 +131,14 @@ export default function GameRoom({ player, memberId, roomId, onExit }) {
       g.style.display   = 'flex';
       g.style.transform = `translate(${e.clientX}px, ${e.clientY}px) translate(-50%, -55%) scale(1.1) rotate(5deg)`;
     }
-
+ 
     let moved = false;
     let lastZoneEl = null;
-
+ 
     function clearHover() {
       if (lastZoneEl) { lastZoneEl.style.outline = ''; lastZoneEl.style.background = ''; lastZoneEl = null; }
     }
-
+ 
     function onMove(ev) {
       ev.preventDefault();
       moved = true;
@@ -152,33 +148,50 @@ export default function GameRoom({ player, memberId, roomId, onExit }) {
       if (lastZoneEl && lastZoneEl !== dz) { lastZoneEl.style.outline = ''; lastZoneEl.style.background = ''; }
       if (dz) { dz.style.outline = '2px solid #40e880'; dz.style.background = 'rgba(64,232,128,0.13)'; lastZoneEl = dz; }
     }
-
+ 
     function onUp(ev) {
       document.removeEventListener('pointermove', onMove);
       document.removeEventListener('pointerup',   onUp);
-
+ 
       if (g) g.style.opacity = '0';
       const under = document.elementFromPoint(ev.clientX, ev.clientY);
       if (g) { g.style.opacity = ''; g.style.display = 'none'; }
-
+ 
       const cardEl = under ? under.closest('.poker-card[data-source]') : null;
       const dzEl   = under ? under.closest('[data-zone]') : null;
       const toZone = dzEl ? dzEl.dataset.zone : null;
-
+ 
       clearHover();
       el.style.opacity = '';
-
-      if (!moved) {                                  // tap → toggle select
-        setSelectedCard(prev => (prev === card ? null : card));
-        playSound('click');
-        return;
-      }
-      if (!toZone || toZone === zone) return;        // no valid / same zone
-
+ 
       const toIdx = (cardEl && cardEl.dataset.source === toZone)
         ? parseInt(cardEl.dataset.idx, 10)
         : undefined;
-
+ 
+      if (!moved) {                                  // tap → toggle select / swap click
+        setSelectedCard(prev => {
+          if (prev && prev !== card) {
+            let prevZone = null, prevIdx = -1;
+            for (const k of ['front', 'mid', 'back', 'unplaced']) {
+              const pIdx = handRef.current[k].indexOf(prev);
+              if (pIdx >= 0) { prevZone = k; prevIdx = pIdx; break; }
+            }
+            if (prevZone !== null) {
+              setUndoStack(u => [...u.slice(-19), {
+                front: [...handRef.current.front], mid: [...handRef.current.mid], back: [...handRef.current.back], unplaced: [...handRef.current.unplaced]
+              }]);
+              dropCard(prevZone, prevIdx, zone, idx);
+              playSound('flip');
+            }
+            return null;
+          }
+          return prev === card ? null : card;
+        });
+        playSound('click');
+        return;
+      }
+      if (!toZone || (toZone === zone && toIdx === idx)) return;        // no valid / same zone and same card
+ 
       const cur = handRef.current;
       setUndoStack(prev => [...prev.slice(-19), {
         front: [...cur.front], mid: [...cur.mid], back: [...cur.back], unplaced: [...cur.unplaced]
@@ -186,11 +199,11 @@ export default function GameRoom({ player, memberId, roomId, onExit }) {
       dropCard(zone, idx, toZone, toIdx);
       playSound('flip');
     }
-
+ 
     document.addEventListener('pointermove', onMove, { passive: false });
     document.addEventListener('pointerup',   onUp);
   }
-
+ 
   function renderCard(c, i, zone) {
     const isRed = c.suit === '♥' || c.suit === '♦';
     return (
@@ -207,7 +220,7 @@ export default function GameRoom({ player, memberId, roomId, onExit }) {
       </div>
     );
   }
-
+ 
   // 1. Web Audio
   function playSound(type = 'click') {
     if (soundVolume <= 0) return;
@@ -238,18 +251,8 @@ export default function GameRoom({ player, memberId, roomId, onExit }) {
       osc.stop(now + dur + 0.02);
     } catch (e) {}
   }
-
-  // 2. TTS
-  function announce(text) {
-    if (speechMuted) return;
-    try {
-      const u = new SpeechSynthesisUtterance(text);
-      u.lang = 'th-TH'; u.rate = 1.0;
-      window.speechSynthesis.speak(u);
-    } catch (e) {}
-  }
-
-  // 3. Firestore subscriptions
+ 
+  // 2. Firestore subscriptions
   useEffect(() => {
     if (!roomId) return;
     unsubRoom.current = db.collection('rooms').doc(roomId).onSnapshot(async snap => {
@@ -260,22 +263,33 @@ export default function GameRoom({ player, memberId, roomId, onExit }) {
       const me = pList.find(x => x.name === player.name);
       if (me) { setMyId(me.id); setIsHost(me.isHost || false); }
       setPlayers(pList);
-
-      // Reset hand when round ends so next deal works cleanly
-      if (d.status !== 'playing') {
-        const h = handRef.current;
-        if (h.front.length > 0 || h.mid.length > 0 || h.back.length > 0 || h.unplaced.length > 0 || h.done) {
-          setHand({ front: [], mid: [], back: [], unplaced: [], done: false, foul: false });
-        }
-      }
-
+ 
       if (d.status === 'playing' && me) {
         const myDeal = (d.deals || {})[me.id] || [];
+        const currentRound = d.round || 0;
         const submitted = (d.hands || {})[me.name] || (d.hands || {})[me.id];
-        if (myDeal.length > 0 && !submitted && handRef.current.unplaced.length === 0 && handRef.current.front.length === 0 && handRef.current.mid.length === 0 && handRef.current.back.length === 0) {
-          setHand({ front: [], mid: [], back: [], unplaced: [...myDeal].sort((a, b) => a.val - b.val), done: false, foul: false });
+        
+        // Populate unplaced cards only once per round
+        if (myDeal.length > 0 && !submitted && initializedRoundRef.current !== currentRound) {
+          const sortedDeal = [...myDeal].sort((a, b) => {
+            if (a.val !== b.val) return a.val - b.val;
+            return (SUIT_RANK[a.suit] || 0) - (SUIT_RANK[b.suit] || 0);
+          });
+          setHand({ front: [], mid: [], back: [], unplaced: sortedDeal, done: false, foul: false });
+          initializedRoundRef.current = currentRound;
           playSound('deal');
+        } else if (submitted && initializedRoundRef.current !== currentRound) {
+          setHand({
+            front: submitted.front || [],
+            mid: submitted.mid || [],
+            back: submitted.back || [],
+            unplaced: [],
+            done: true,
+            foul: submitted.foul || false
+          });
+          initializedRoundRef.current = currentRound;
         }
+        
         if (me.isHost) {
           const activeP = pList.filter(p => !p.isSpectator && !p.isQueue);
           const allDone = activeP.length >= 2 && activeP.every(p => (d.hands || {})[p.name]?.done);
@@ -284,7 +298,7 @@ export default function GameRoom({ player, memberId, roomId, onExit }) {
           }
         }
       }
-
+ 
       pList.forEach(p => {
         if (p.emojiReaction && p.name !== player.name) {
           triggerFloatingEmoji(p.avatar || '🎴', p.emojiReaction);
@@ -307,13 +321,13 @@ export default function GameRoom({ player, memberId, roomId, onExit }) {
       if (unsubChat.current) unsubChat.current();
     };
   }, [roomId]);
-
+ 
   function triggerFloatingEmoji(avatar, emoji) {
     const id = Math.random();
     setFloatingEmojis(prev => [...prev, { id, avatar, emoji }]);
     setTimeout(() => setFloatingEmojis(prev => prev.filter(x => x.id !== id)), 1500);
   }
-
+ 
   // Live chip balance subscription for header
   useEffect(() => {
     if (!memberId) return;
@@ -323,8 +337,8 @@ export default function GameRoom({ player, memberId, roomId, onExit }) {
     );
     return () => unsub();
   }, [memberId]);
-
-  // ── Settle round: compute scores + update chips. Always transitions to results. ──
+ 
+  // ── Settle round: compute scores + update chips atomically (host only) ──
   async function settleScores() {
     const roomRef = db.collection('rooms').doc(roomId);
     try {
@@ -334,51 +348,107 @@ export default function GameRoom({ player, memberId, roomId, onExit }) {
         const fd = fresh.data();
         if (fd.status !== 'playing') return;
         if (fd.settledRound === fd.round) return;
-
+ 
         const playingP = Object.entries(fd.players || {})
           .map(([id, v]) => ({ id, ...v }))
           .filter(p => !p.isSpectator && !p.isQueue);
+ 
         if (playingP.length < 2) return;
         if (!playingP.every(p => (fd.hands || {})[p.name]?.done)) return;
-
+ 
+        const memberSnaps = {};
+        for (const p of playingP) {
+          memberSnaps[p.id] = await tx.get(db.collection('members').doc(p.id));
+        }
+ 
         const scores = calcScores(playingP, fd.hands || {});
         const newScores = { ...(fd.scores || {}) };
-
+ 
         for (const p of playingP) {
           const sc  = scores.find(s => s.name === p.name);
           const amt = Math.round((sc?.roundScore || 0) * 100) / 100;
-          const mRef = db.collection('members').doc(p.id);
-          const mSnap = await tx.get(mRef);
-          const cur   = mSnap.exists ? (mSnap.data().chips || 0) : 0;
+          const mSnap = memberSnaps[p.id];
+          
+          let currentLevel = 1;
+          let currentXp = 0;
+          let currentGames = 0;
+          let currentWins = 0;
+          let currentTotalProfit = 0;
+          let currentDerbyCount = 0;
+          let currentDragonCount = 0;
+          let currentTaluCount = 0;
+          let cur = 0;
+          
+          if (mSnap && mSnap.exists) {
+            const mData = mSnap.data();
+            cur = mData.chips || 0;
+            currentLevel = mData.level || 1;
+            currentXp = mData.xp || 0;
+            currentGames = mData.games || 0;
+            currentWins = mData.wins || 0;
+            currentTotalProfit = mData.totalProfit || 0;
+            currentDerbyCount = mData.derbyCount || 0;
+            currentDragonCount = mData.dragonCount || 0;
+            currentTaluCount = mData.taluCount || 0;
+          }
+ 
           const finalChips = Math.round((cur + amt) * 100) / 100;
-          tx.set(mRef, { chips: finalChips }, { merge: true });
+          const finalGames = currentGames + 1;
+          const earnedWins = amt > 0 ? 1 : 0;
+          const finalWins = currentWins + earnedWins;
+          const finalWinRate = Math.round((finalWins / finalGames) * 100);
+          const finalTotalProfit = Math.round((currentTotalProfit + amt) * 100) / 100;
+          
+          const isDragon = isDragonHand((fd.hands || {})[p.name]);
+          const isDerby = sc?.isDarby || false;
+          const earnedTalu = sc?.taluCount || 0;
+          
+          const finalDragonCount = currentDragonCount + (isDragon ? 1 : 0);
+          const finalDerbyCount = currentDerbyCount + (isDerby ? 1 : 0);
+          const finalTaluCount = currentTaluCount + earnedTalu;
+          
+          // Calculate XP & Level Progression
+          let earnedXp = 25; // Base XP
+          if (amt > 0) earnedXp += 25; // Win XP
+          if (earnedTalu > 0) earnedXp += 30; // Talu XP
+          if (isDerby) earnedXp += 75; // Derby XP
+          if (isDragon) earnedXp += 100; // Dragon XP
+          
+          let newLevel = currentLevel;
+          let newXp = currentXp + earnedXp;
+          while (newXp >= 250) {
+            newXp -= 250;
+            newLevel += 1;
+          }
+ 
+          tx.set(db.collection('members').doc(p.id), {
+            chips: finalChips,
+            games: finalGames,
+            wins: finalWins,
+            winRate: finalWinRate,
+            totalProfit: finalTotalProfit,
+            derbyCount: finalDerbyCount,
+            dragonCount: finalDragonCount,
+            taluCount: finalTaluCount,
+            level: newLevel,
+            xp: newXp,
+            txns: firebase.firestore.FieldValue.arrayUnion({
+              t: Date.now(),
+              ty: amt >= 0 ? 'win' : 'lose',
+              amt: Math.abs(amt),
+              bal: finalChips,
+              note: `รอบ ${fd.round} ห้อง #${roomId}`
+            })
+          }, { merge: true });
+ 
           newScores[p.id] = Math.round(((fd.scores?.[p.id] || 0) + amt) * 100) / 100;
         }
-
+ 
         tx.update(roomRef, { scores: newScores, status: 'results', settledRound: fd.round });
       });
-    } catch (e) {
-      // Transaction failed — fallback: at minimum set status to results so game can continue
-      try {
-        const fresh = await roomRef.get();
-        if (!fresh.exists) return;
-        const fd = fresh.data();
-        if (fd.status !== 'playing') return;
-        if (fd.settledRound === fd.round) return;
-        const playingP = Object.entries(fd.players || {})
-          .map(([id, v]) => ({ id, ...v }))
-          .filter(p => !p.isSpectator && !p.isQueue);
-        const scores = calcScores(playingP, fd.hands || {});
-        const newScores = { ...(fd.scores || {}) };
-        scores.forEach(sc => {
-          const p = playingP.find(x => x.name === sc.name);
-          if (p) newScores[p.id] = Math.round(((fd.scores?.[p.id] || 0) + sc.roundScore) * 100) / 100;
-        });
-        await roomRef.update({ scores: newScores, status: 'results', settledRound: fd.round });
-      } catch (e2) {}
-    }
+    } catch (e) {}
   }
-
+ 
   // 4. Presence
   async function joinActive() {
     if (!room) return;
@@ -390,13 +460,13 @@ export default function GameRoom({ player, memberId, roomId, onExit }) {
     });
     setMyId(myCode);
   }
-
+ 
   async function setReadyState() {
     if (!myId) return;
     await db.collection('rooms').doc(roomId).update({ [`players.${myId}.ready`]: true });
     playSound('ready');
   }
-
+ 
   async function handleHostStart() {
     const deck = [];
     const suits = ['♠','♥','♦','♣'];
@@ -413,14 +483,14 @@ export default function GameRoom({ player, memberId, roomId, onExit }) {
     active.forEach((p, idx) => { deals[p.id] = shuffled.slice(idx * 13, (idx + 1) * 13); });
     await db.collection('rooms').doc(roomId).update({ status: 'playing', deals, hands: {}, scores: {}, round: (room.round || 0) + 1 });
   }
-
+ 
   // 5. Arranger helpers
   function pushUndo() {
     setUndoStack(prev => [...prev.slice(-19), {
       front: [...hand.front], mid: [...hand.mid], back: [...hand.back], unplaced: [...hand.unplaced]
     }]);
   }
-
+ 
   function handleUndo() {
     if (undoStack.length === 0) return;
     const prev = undoStack[undoStack.length - 1];
@@ -428,13 +498,13 @@ export default function GameRoom({ player, memberId, roomId, onExit }) {
     setUndoStack(prev => prev.slice(0, -1));
     playSound('click');
   }
-
+ 
   function handleReset() {
     pushUndo();
     setHand({ front: [], mid: [], back: [], unplaced: [...hand.front, ...hand.mid, ...hand.back, ...hand.unplaced], done: false, foul: false });
     playSound('click');
   }
-
+ 
   // Tap-to-move (zone onClick) — uses dropCard's swap logic via selected card
   function moveCardTo(targetZone) {
     if (!selectedCard) return;
@@ -450,23 +520,14 @@ export default function GameRoom({ player, memberId, roomId, onExit }) {
     setSelectedCard(null);
     playSound('click');
   }
-
+ 
   // Swap middle ↔ bottom rows (v1 convenience)
   function handleSwapMidBack() {
     pushUndo();
     setHand(prev => ({ ...prev, mid: [...prev.back], back: [...prev.mid] }));
     playSound('flip');
   }
-
-  function handleAutoArrange() {
-    const all = [...hand.front, ...hand.mid, ...hand.back, ...hand.unplaced];
-    if (all.length < 13) return;
-    pushUndo();
-    const arranged = aiArrange(all, aiMode);
-    setHand({ front: arranged.front, mid: arranged.mid, back: arranged.back, unplaced: [], done: false, foul: false });
-    playSound('ready');
-  }
-
+ 
   async function handleSubmitHand() {
     if (hand.front.length !== 3 || hand.mid.length !== 5 || hand.back.length !== 5) {
       alert('กรุณาจัดไพ่ให้ครบทั้ง 3 กอง (3-5-5) ก่อนส่งครับ'); return;
@@ -482,44 +543,41 @@ export default function GameRoom({ player, memberId, roomId, onExit }) {
     setHand({ ...hand, done: true });
     playSound('ready');
   }
-
-  // Memoized AI analysis → recomputes ONLY when hand or mode changes
-
-
+ 
   async function handleSendChat(e) {
     e.preventDefault();
     if (!chatMsg.trim()) return;
     await db.collection('rooms').doc(roomId).collection('chat').add({ name: player.name, avatar: player.avatar, text: chatMsg.trim(), timestamp: Date.now() });
     setChatMsg('');
   }
-
+ 
   async function handleSendEmoji(emoji) {
     if (!myId) return;
     await db.collection('rooms').doc(roomId).update({ [`players.${myId}.emojiReaction`]: emoji });
     triggerFloatingEmoji(player.avatar, emoji);
   }
-
+ 
   async function handleNextRound() {
     await db.collection('rooms').doc(roomId).update({ status: 'lobby', hands: {}, deals: {}, scores: {} });
   }
-
+ 
   const activeOpponents = players.filter(p => !p.isSpectator && !p.isQueue);
   const seats = Array(4).fill(null).map((_, i) => activeOpponents[i]);
-
+ 
   if (!room) {
     return <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100vh', color: 'var(--text-muted)' }}>กำลังเชื่อมต่อห้องเกม...</div>;
   }
-
+ 
   return (
     <div className="screen active" style={{ display: 'flex', flexDirection: 'column', height: '100vh', overflow: 'hidden' }}>
-
+ 
       {/* HEADER */}
       <div className="app-header safe-area-top">
         <button className="btn-secondary" style={{ padding: '6px 12px' }} onClick={onExit}>🚪</button>
         <div className="header-logo">🃏 3 กอง กาญ</div>
         <div style={{ fontSize: '11px', color: 'var(--primary)', fontWeight: '700' }}>ห้อง: #{roomId} • อัตรา {room.rate} • รอบ {room.round || 0}</div>
       </div>
-
+ 
       {/* PERSISTENT GHOST CARD */}
       <div
         ref={ghostRef}
@@ -533,7 +591,7 @@ export default function GameRoom({ player, memberId, roomId, onExit }) {
         <span ref={ghostNumRef} className="card-num" style={{ fontSize: '20px', fontWeight: 900, lineHeight: 1 }}></span>
         <span ref={ghostSuitRef} className="card-suit" style={{ fontSize: '26px', lineHeight: 1 }}></span>
       </div>
-
+ 
       {/* FLOATING EMOJIS */}
       <div style={{ position: 'fixed', inset: 0, pointerEvents: 'none', zIndex: 100 }}>
         {floatingEmojis.map(x => (
@@ -543,7 +601,7 @@ export default function GameRoom({ player, memberId, roomId, onExit }) {
           </div>
         ))}
       </div>
-
+ 
       {/* LOBBY */}
       {room.status === 'lobby' && (
         <div style={{ flex: 1, padding: '20px', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '16px' }}>
@@ -570,7 +628,7 @@ export default function GameRoom({ player, memberId, roomId, onExit }) {
           </div>
         </div>
       )}
-
+ 
       {/* PLAYING */}
       {room.status === 'playing' && (
         <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
@@ -595,7 +653,7 @@ export default function GameRoom({ player, memberId, roomId, onExit }) {
               })}
             </div>
           </div>
-
+ 
           {/* My Hand */}
           <div className="my-hand safe-area-bottom" style={{ overflowY: 'auto' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
@@ -606,10 +664,10 @@ export default function GameRoom({ player, memberId, roomId, onExit }) {
               </div>
               <span style={{ fontSize: '10px', color: 'var(--text-muted)' }}>ลากไพ่ทับกันเพื่อสลับ</span>
             </div>
-
+ 
             {/* 3 Drop Zones */}
             <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', marginBottom: '8px' }}>
-
+ 
               {/* FRONT (3) — บนสุด */}
               <div className="hand-pile-container">
                 <span className="hand-pile-label">หน้า (3)</span>
@@ -627,7 +685,7 @@ export default function GameRoom({ player, memberId, roomId, onExit }) {
                   </span>
                 )}
               </div>
-
+ 
               {/* MID (5) */}
               <div className="hand-pile-container">
                 <span className="hand-pile-label">กลาง (5)</span>
@@ -645,7 +703,7 @@ export default function GameRoom({ player, memberId, roomId, onExit }) {
                   </span>
                 )}
               </div>
-
+ 
               {/* BACK (5) — ล่างสุด */}
               <div className="hand-pile-container">
                 <span className="hand-pile-label">หลัง (5)</span>
@@ -664,7 +722,7 @@ export default function GameRoom({ player, memberId, roomId, onExit }) {
                 )}
               </div>
             </div>
-
+ 
             {/* UNPLACED */}
             <div style={{ marginBottom: '8px' }}>
               <div
@@ -676,18 +734,17 @@ export default function GameRoom({ player, memberId, roomId, onExit }) {
                 {hand.unplaced.map((c, i) => renderCard(c, i, 'unplaced'))}
               </div>
             </div>
-
+ 
             {/* BUTTONS */}
             <div style={{ display: 'flex', gap: '6px', marginBottom: '8px' }}>
-              <button className="btn-secondary" style={{ flex: 1, padding: '10px' }} onClick={handleAutoArrange}><Sparkles size={14} style={{ marginRight: '3px' }} /> จัดให้</button>
-              <button className="btn-secondary" style={{ padding: '10px', fontSize: '13px', fontWeight: '800', whiteSpace: 'nowrap' }} onClick={handleSwapMidBack}>⇅ สลับ</button>
+              <button className="btn-secondary" style={{ flex: 1, padding: '10px', fontSize: '13px', fontWeight: '800', whiteSpace: 'nowrap' }} onClick={handleSwapMidBack}>⇅ สลับกองกลาง/หลัง</button>
               <button className="btn-secondary" style={{ padding: '10px' }} onClick={handleUndo}><Undo2 size={14} /></button>
               <button className="btn-secondary" style={{ padding: '10px' }} onClick={handleReset}><RotateCcw size={14} /></button>
               <button className="btn-premium" style={{ flex: 2, padding: '10px', fontSize: '15px' }} onClick={handleSubmitHand} disabled={hand.done}>
                 {hand.done ? '✓ ส่งไพ่แล้ว' : '⚔️ ส่งไพ่สู้!'}
               </button>
             </div>
-
+ 
             {/* EMOJI DOCK */}
             <div style={{ display: 'flex', justifyContent: 'space-around', paddingBottom: '4px' }}>
               {['😂','😭','🔥','💸','🐉','👑','🎉'].map(emoji => (
@@ -697,7 +754,7 @@ export default function GameRoom({ player, memberId, roomId, onExit }) {
           </div>
         </div>
       )}
-
+ 
       {/* RESULTS */}
       {room.status === 'results' && (
         <div style={{ flex: 1, display: 'flex', flexDirection: 'column', background: '#081708', padding: '14px', overflowY: 'auto' }}>
@@ -722,12 +779,12 @@ export default function GameRoom({ player, memberId, roomId, onExit }) {
           </div>
         </div>
       )}
-
+ 
       {/* CHAT BUTTON */}
       <button className="btn-premium" style={{ position: 'fixed', bottom: '16px', right: '16px', width: '48px', height: '48px', borderRadius: '50%', boxShadow: '0 4px 12px rgba(0,0,0,0.5)', zIndex: 100 }} onClick={() => setChatOpen(!chatOpen)}>
         <MessageCircle size={20} />
       </button>
-
+ 
       {/* CHAT DRAWER */}
       {chatOpen && (
         <div style={{ position: 'fixed', inset: 'auto 0 0 0', zIndex: 200, display: 'flex', flexDirection: 'column', maxHeight: '50vh', background: '#1c1c28', borderTop: '2px solid var(--line)', borderRadius: '16px 16px 0 0' }}>
