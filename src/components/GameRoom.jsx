@@ -19,51 +19,51 @@ import {
   ShieldAlert, Undo2, RotateCcw, Sparkles, MessageCircle, 
   Send, Users, Award, Play, Home, Volume2, VolumeX, Eye
 } from 'lucide-react';
-
+ 
 export default function GameRoom({ player, memberId, roomId, onExit }) {
   // Live Room State
   const [room, setRoom]       = useState(null);
   const [players, setPlayers] = useState([]);
   const [myId, setMyId]       = useState('');
   const [isHost, setIsHost]   = useState(false);
-
+ 
   // Player Hand State
   const [hand, setHand]                 = useState({ front: [], mid: [], back: [], unplaced: [], done: false, foul: false });
   const [selectedCard, setSelectedCard] = useState(null);
   const [undoStack, setUndoStack]       = useState([]);
   const [aiMode, setAiMode]             = useState('balanced');
-
+ 
   // Keep a live ref to hand so the drag handlers (attached to document) always
   // read the freshest hand without re-subscribing.
   const handRef = useRef(hand);
   useEffect(() => { handRef.current = hand; }, [hand]);
-
+ 
   // Drag ghost refs
   const ghostRef     = useRef(null);
   const ghostNumRef  = useRef(null);
   const ghostSuitRef = useRef(null);
-
+ 
   // Sound & Speech
   const [soundVolume, setSoundVolume] = useState(0.5);
   const [speechMuted, setSpeechMuted] = useState(false);
   const audioCtx = useRef(null);
-
+ 
   // Live chip balance for the current member (header display)
   const [myChips, setMyChips] = useState(0);
-
+ 
   // Chat & Emoji
   const [chatOpen, setChatOpen]       = useState(false);
   const [chatMsg, setChatMsg]         = useState('');
   const [chatList, setChatList]       = useState([]);
   const [unreadCount, setUnreadCount] = useState(0);
   const [floatingEmojis, setFloatingEmojis] = useState([]);
-
+ 
   // Subscriptions
   const unsubRoom = useRef(null);
   const unsubChat = useRef(null);
-
+ 
   const MAX = { front: 3, mid: 5, back: 5 };
-
+ 
   // ── autoFill: if exactly one row is empty and unplaced holds exactly its size, drop them in (v1) ──
   function autoFillInto(h) {
     const empty   = ['front', 'mid', 'back'].filter(r => h[r].length === 0);
@@ -73,7 +73,7 @@ export default function GameRoom({ player, memberId, roomId, onExit }) {
       if (h.unplaced.length === MAX[r]) { h[r] = [...h.unplaced]; h.unplaced = []; }
     }
   }
-
+ 
   // ── dropCard: ported 1:1 from v1 — exact card swap, index-preserving, bump-when-full ──
   function dropCard(fromZone, fromIdx, toZone, toIdx) {
     setHand(prev => {
@@ -88,7 +88,7 @@ export default function GameRoom({ player, memberId, roomId, onExit }) {
       const fromArr = fromZone === 'unplaced' ? h.unplaced : h[fromZone];
       const card = fromArr[fromIdx];
       if (!card) return prev;
-
+ 
       // dropped directly onto a card in the target → swap those two, keep positions
       if (toZone !== 'unplaced' && toIdx !== undefined && toIdx >= 0) {
         const target = h[toZone][toIdx];
@@ -100,7 +100,7 @@ export default function GameRoom({ player, memberId, roomId, onExit }) {
           return h;
         }
       }
-
+ 
       // target full → push its last card back into the source slot
       if (toZone !== 'unplaced' && h[toZone].length >= MAX[toZone]) {
         const d = h[toZone].pop();
@@ -116,17 +116,17 @@ export default function GameRoom({ player, memberId, roomId, onExit }) {
       return h;
     });
   }
-
+ 
   // ── Start drag (v1-style, pointer events). Ghost moves via DOM; React renders once on drop. ──
   function onCardPointerDown(e, card, zone, idx) {
     if (hand.done) return;
     e.preventDefault();
     e.stopPropagation();
-
+ 
     const el    = e.currentTarget;
     const isRed = card.suit === '♥' || card.suit === '♦';
     el.style.opacity = '0.3';
-
+ 
     const g = ghostRef.current;
     if (g) {
       g.className = `poker-card ${isRed ? 'red-card' : 'black-card'}`;
@@ -135,14 +135,14 @@ export default function GameRoom({ player, memberId, roomId, onExit }) {
       g.style.display   = 'flex';
       g.style.transform = `translate(${e.clientX}px, ${e.clientY}px) translate(-50%, -55%) scale(1.1) rotate(5deg)`;
     }
-
+ 
     let moved = false;
     let lastZoneEl = null;
-
+ 
     function clearHover() {
       if (lastZoneEl) { lastZoneEl.style.outline = ''; lastZoneEl.style.background = ''; lastZoneEl = null; }
     }
-
+ 
     function onMove(ev) {
       ev.preventDefault();
       moved = true;
@@ -152,33 +152,33 @@ export default function GameRoom({ player, memberId, roomId, onExit }) {
       if (lastZoneEl && lastZoneEl !== dz) { lastZoneEl.style.outline = ''; lastZoneEl.style.background = ''; }
       if (dz) { dz.style.outline = '2px solid #40e880'; dz.style.background = 'rgba(64,232,128,0.13)'; lastZoneEl = dz; }
     }
-
+ 
     function onUp(ev) {
       document.removeEventListener('pointermove', onMove);
       document.removeEventListener('pointerup',   onUp);
-
+ 
       if (g) g.style.opacity = '0';
       const under = document.elementFromPoint(ev.clientX, ev.clientY);
       if (g) { g.style.opacity = ''; g.style.display = 'none'; }
-
+ 
       const cardEl = under ? under.closest('.poker-card[data-source]') : null;
       const dzEl   = under ? under.closest('[data-zone]') : null;
       const toZone = dzEl ? dzEl.dataset.zone : null;
-
+ 
       clearHover();
       el.style.opacity = '';
-
+ 
       if (!moved) {                                  // tap → toggle select
         setSelectedCard(prev => (prev === card ? null : card));
         playSound('click');
         return;
       }
       if (!toZone || toZone === zone) return;        // no valid / same zone
-
+ 
       const toIdx = (cardEl && cardEl.dataset.source === toZone)
         ? parseInt(cardEl.dataset.idx, 10)
         : undefined;
-
+ 
       const cur = handRef.current;
       setUndoStack(prev => [...prev.slice(-19), {
         front: [...cur.front], mid: [...cur.mid], back: [...cur.back], unplaced: [...cur.unplaced]
@@ -186,11 +186,11 @@ export default function GameRoom({ player, memberId, roomId, onExit }) {
       dropCard(zone, idx, toZone, toIdx);
       playSound('flip');
     }
-
+ 
     document.addEventListener('pointermove', onMove, { passive: false });
     document.addEventListener('pointerup',   onUp);
   }
-
+ 
   function renderCard(c, i, zone) {
     const isRed = c.suit === '♥' || c.suit === '♦';
     return (
@@ -207,7 +207,7 @@ export default function GameRoom({ player, memberId, roomId, onExit }) {
       </div>
     );
   }
-
+ 
   // 1. Web Audio
   function playSound(type = 'click') {
     if (soundVolume <= 0) return;
@@ -238,7 +238,7 @@ export default function GameRoom({ player, memberId, roomId, onExit }) {
       osc.stop(now + dur + 0.02);
     } catch (e) {}
   }
-
+ 
   // 2. TTS
   function announce(text) {
     if (speechMuted) return;
@@ -248,7 +248,7 @@ export default function GameRoom({ player, memberId, roomId, onExit }) {
       window.speechSynthesis.speak(u);
     } catch (e) {}
   }
-
+ 
   // 3. Firestore subscriptions
   useEffect(() => {
     if (!roomId) return;
@@ -260,7 +260,7 @@ export default function GameRoom({ player, memberId, roomId, onExit }) {
       const me = pList.find(x => x.name === player.name);
       if (me) { setMyId(me.id); setIsHost(me.isHost || false); }
       setPlayers(pList);
-
+ 
       if (d.status === 'playing' && me) {
         const myDeal = (d.deals || {})[me.id] || [];
         const submitted = (d.hands || {})[me.name] || (d.hands || {})[me.id];
@@ -276,7 +276,7 @@ export default function GameRoom({ player, memberId, roomId, onExit }) {
           }
         }
       }
-
+ 
       pList.forEach(p => {
         if (p.emojiReaction && p.name !== player.name) {
           triggerFloatingEmoji(p.avatar || '🎴', p.emojiReaction);
@@ -299,13 +299,13 @@ export default function GameRoom({ player, memberId, roomId, onExit }) {
       if (unsubChat.current) unsubChat.current();
     };
   }, [roomId]);
-
+ 
   function triggerFloatingEmoji(avatar, emoji) {
     const id = Math.random();
     setFloatingEmojis(prev => [...prev, { id, avatar, emoji }]);
     setTimeout(() => setFloatingEmojis(prev => prev.filter(x => x.id !== id)), 1500);
   }
-
+ 
   // Live chip balance subscription for header
   useEffect(() => {
     if (!memberId) return;
@@ -315,7 +315,7 @@ export default function GameRoom({ player, memberId, roomId, onExit }) {
     );
     return () => unsub();
   }, [memberId]);
-
+ 
   // ── Settle round: compute scores + update chips atomically (host only) ──
   async function settleScores() {
     const roomRef = db.collection('rooms').doc(roomId);
@@ -326,29 +326,29 @@ export default function GameRoom({ player, memberId, roomId, onExit }) {
         const fd = fresh.data();
         if (fd.status !== 'playing') return;
         if (fd.settledRound === fd.round) return;
-
+ 
         const playingP = Object.entries(fd.players || {})
           .map(([id, v]) => ({ id, ...v }))
           .filter(p => !p.isSpectator && !p.isQueue);
-
+ 
         if (playingP.length < 2) return;
         if (!playingP.every(p => (fd.hands || {})[p.name]?.done)) return;
-
+ 
         const memberSnaps = {};
         for (const p of playingP) {
           memberSnaps[p.id] = await tx.get(db.collection('members').doc(p.id));
         }
-
+ 
         const scores = calcScores(playingP, fd.hands || {});
         const newScores = { ...(fd.scores || {}) };
-
+ 
         for (const p of playingP) {
           const sc  = scores.find(s => s.name === p.name);
           const amt = Math.round((sc?.roundScore || 0) * 100) / 100;
           const mSnap = memberSnaps[p.id];
           const cur   = mSnap.exists ? (mSnap.data().chips || 0) : 0;
           const finalChips = Math.round((cur + amt) * 100) / 100;
-
+ 
           tx.set(db.collection('members').doc(p.id), {
             chips: finalChips,
             txns: firebase.firestore.FieldValue.arrayUnion({
@@ -359,15 +359,15 @@ export default function GameRoom({ player, memberId, roomId, onExit }) {
               note: `รอบ ${fd.round} ห้อง #${roomId}`
             })
           }, { merge: true });
-
+ 
           newScores[p.id] = Math.round(((fd.scores?.[p.id] || 0) + amt) * 100) / 100;
         }
-
+ 
         tx.update(roomRef, { scores: newScores, status: 'results', settledRound: fd.round });
       });
     } catch (e) {}
   }
-
+ 
   // 4. Presence
   async function joinActive() {
     if (!room) return;
@@ -379,13 +379,13 @@ export default function GameRoom({ player, memberId, roomId, onExit }) {
     });
     setMyId(myCode);
   }
-
+ 
   async function setReadyState() {
     if (!myId) return;
     await db.collection('rooms').doc(roomId).update({ [`players.${myId}.ready`]: true });
     playSound('ready');
   }
-
+ 
   async function handleHostStart() {
     const deck = [];
     const suits = ['♠','♥','♦','♣'];
@@ -402,14 +402,14 @@ export default function GameRoom({ player, memberId, roomId, onExit }) {
     active.forEach((p, idx) => { deals[p.id] = shuffled.slice(idx * 13, (idx + 1) * 13); });
     await db.collection('rooms').doc(roomId).update({ status: 'playing', deals, hands: {}, scores: {}, round: (room.round || 0) + 1 });
   }
-
+ 
   // 5. Arranger helpers
   function pushUndo() {
     setUndoStack(prev => [...prev.slice(-19), {
       front: [...hand.front], mid: [...hand.mid], back: [...hand.back], unplaced: [...hand.unplaced]
     }]);
   }
-
+ 
   function handleUndo() {
     if (undoStack.length === 0) return;
     const prev = undoStack[undoStack.length - 1];
@@ -417,13 +417,13 @@ export default function GameRoom({ player, memberId, roomId, onExit }) {
     setUndoStack(prev => prev.slice(0, -1));
     playSound('click');
   }
-
+ 
   function handleReset() {
     pushUndo();
     setHand({ front: [], mid: [], back: [], unplaced: [...hand.front, ...hand.mid, ...hand.back, ...hand.unplaced], done: false, foul: false });
     playSound('click');
   }
-
+ 
   // Tap-to-move (zone onClick) — uses dropCard's swap logic via selected card
   function moveCardTo(targetZone) {
     if (!selectedCard) return;
@@ -439,14 +439,14 @@ export default function GameRoom({ player, memberId, roomId, onExit }) {
     setSelectedCard(null);
     playSound('click');
   }
-
+ 
   // Swap middle ↔ bottom rows (v1 convenience)
   function handleSwapMidBack() {
     pushUndo();
     setHand(prev => ({ ...prev, mid: [...prev.back], back: [...prev.mid] }));
     playSound('flip');
   }
-
+ 
   function handleAutoArrange() {
     const all = [...hand.front, ...hand.mid, ...hand.back, ...hand.unplaced];
     if (all.length < 13) return;
@@ -455,7 +455,7 @@ export default function GameRoom({ player, memberId, roomId, onExit }) {
     setHand({ front: arranged.front, mid: arranged.mid, back: arranged.back, unplaced: [], done: false, foul: false });
     playSound('ready');
   }
-
+ 
   async function handleSubmitHand() {
     if (hand.front.length !== 3 || hand.mid.length !== 5 || hand.back.length !== 5) {
       alert('กรุณาจัดไพ่ให้ครบทั้ง 3 กอง (3-5-5) ก่อนส่งครับ'); return;
@@ -471,44 +471,44 @@ export default function GameRoom({ player, memberId, roomId, onExit }) {
     setHand({ ...hand, done: true });
     playSound('ready');
   }
-
+ 
   // Memoized AI analysis → recomputes ONLY when hand or mode changes
-  const cardLab = useMemo(() => aiAnalysis(hand, hand.unplaced, aiMode), [hand, aiMode]);
-
+ 
+ 
   async function handleSendChat(e) {
     e.preventDefault();
     if (!chatMsg.trim()) return;
     await db.collection('rooms').doc(roomId).collection('chat').add({ name: player.name, avatar: player.avatar, text: chatMsg.trim(), timestamp: Date.now() });
     setChatMsg('');
   }
-
+ 
   async function handleSendEmoji(emoji) {
     if (!myId) return;
     await db.collection('rooms').doc(roomId).update({ [`players.${myId}.emojiReaction`]: emoji });
     triggerFloatingEmoji(player.avatar, emoji);
   }
-
+ 
   async function handleNextRound() {
     await db.collection('rooms').doc(roomId).update({ status: 'lobby', hands: {}, deals: {}, scores: {} });
   }
-
+ 
   const activeOpponents = players.filter(p => !p.isSpectator && !p.isQueue);
   const seats = Array(4).fill(null).map((_, i) => activeOpponents[i]);
-
+ 
   if (!room) {
     return <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100vh', color: 'var(--text-muted)' }}>กำลังเชื่อมต่อห้องเกม...</div>;
   }
-
+ 
   return (
     <div className="screen active" style={{ display: 'flex', flexDirection: 'column', height: '100vh', overflow: 'hidden' }}>
-
+ 
       {/* HEADER */}
       <div className="app-header safe-area-top">
         <button className="btn-secondary" style={{ padding: '6px 12px' }} onClick={onExit}>🚪</button>
         <div className="header-logo">🃏 3 กอง กาญ</div>
         <div style={{ fontSize: '11px', color: 'var(--primary)', fontWeight: '700' }}>ห้อง: #{roomId} • อัตรา {room.rate} • รอบ {room.round || 0}</div>
       </div>
-
+ 
       {/* PERSISTENT GHOST CARD */}
       <div
         ref={ghostRef}
@@ -522,7 +522,7 @@ export default function GameRoom({ player, memberId, roomId, onExit }) {
         <span ref={ghostNumRef} className="card-num" style={{ fontSize: '20px', fontWeight: 900, lineHeight: 1 }}></span>
         <span ref={ghostSuitRef} className="card-suit" style={{ fontSize: '26px', lineHeight: 1 }}></span>
       </div>
-
+ 
       {/* FLOATING EMOJIS */}
       <div style={{ position: 'fixed', inset: 0, pointerEvents: 'none', zIndex: 100 }}>
         {floatingEmojis.map(x => (
@@ -532,7 +532,7 @@ export default function GameRoom({ player, memberId, roomId, onExit }) {
           </div>
         ))}
       </div>
-
+ 
       {/* LOBBY */}
       {room.status === 'lobby' && (
         <div style={{ flex: 1, padding: '20px', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '16px' }}>
@@ -559,7 +559,7 @@ export default function GameRoom({ player, memberId, roomId, onExit }) {
           </div>
         </div>
       )}
-
+ 
       {/* PLAYING */}
       {room.status === 'playing' && (
         <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
@@ -584,9 +584,9 @@ export default function GameRoom({ player, memberId, roomId, onExit }) {
               })}
             </div>
           </div>
-
+ 
           {/* My Hand */}
-          <div className="my-hand safe-area-bottom">
+          <div className="my-hand safe-area-bottom" style={{ overflowY: 'auto' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
                 <span style={{ fontSize: '20px' }}>{player.avatar}</span>
@@ -595,10 +595,10 @@ export default function GameRoom({ player, memberId, roomId, onExit }) {
               </div>
               <span style={{ fontSize: '10px', color: 'var(--text-muted)' }}>ลากไพ่ทับกันเพื่อสลับ</span>
             </div>
-
+ 
             {/* 3 Drop Zones */}
             <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', marginBottom: '8px' }}>
-
+ 
               {/* FRONT (3) — บนสุด */}
               <div className="hand-pile-container">
                 <span className="hand-pile-label">หน้า (3)</span>
@@ -616,7 +616,7 @@ export default function GameRoom({ player, memberId, roomId, onExit }) {
                   </span>
                 )}
               </div>
-
+ 
               {/* MID (5) */}
               <div className="hand-pile-container">
                 <span className="hand-pile-label">กลาง (5)</span>
@@ -634,7 +634,7 @@ export default function GameRoom({ player, memberId, roomId, onExit }) {
                   </span>
                 )}
               </div>
-
+ 
               {/* BACK (5) — ล่างสุด */}
               <div className="hand-pile-container">
                 <span className="hand-pile-label">หลัง (5)</span>
@@ -653,7 +653,7 @@ export default function GameRoom({ player, memberId, roomId, onExit }) {
                 )}
               </div>
             </div>
-
+ 
             {/* UNPLACED */}
             <div style={{ marginBottom: '8px' }}>
               <div
@@ -665,58 +665,28 @@ export default function GameRoom({ player, memberId, roomId, onExit }) {
                 {hand.unplaced.map((c, i) => renderCard(c, i, 'unplaced'))}
               </div>
             </div>
-
-            {/* AI CARD LAB */}
-            <div className="glass-panel" style={{ padding: '12px', background: 'rgba(0,0,0,0.3)', border: '1px solid rgba(212,175,55,0.15)', marginBottom: '8px' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12px', fontWeight: '800', marginBottom: '8px' }}>
-                <span style={{ color: 'var(--primary)' }}>🧠 AI CARD LAB GAUGE</span>
-                <select value={aiMode} onChange={e => setAiMode(e.target.value)} style={{ background: 'var(--glass)', border: '1px solid var(--line)', color: 'var(--primary)', borderRadius: '6px', fontSize: '11px', padding: '2px 6px', fontFamily: 'Kanit' }}>
-                  <option value="balanced">Auto EV Mode</option>
-                  <option value="safe">Safe Mode</option>
-                  <option value="derby">Derby Mode</option>
-                  <option value="dragon">Dragon Hunter</option>
-                  <option value="aggressive">Aggressive</option>
-                </select>
-              </div>
-              <div style={{ display: 'flex', gap: '8px', fontSize: '10px', textAlign: 'center', marginBottom: '6px' }}>
-                {cardLab.powers.map(x => (
-                  <div key={x.key} style={{ flex: 1, background: 'rgba(255,255,255,0.03)', padding: '5px', borderRadius: '6px', border: '1px solid rgba(255,255,255,0.05)' }}>
-                    <span style={{ color: 'var(--text-muted)', display: 'block' }}>{x.label} • {x.name}</span>
-                    <b style={{ color: 'var(--primary)', fontSize: '15px' }}>{gradeFromPower(x.power)}</b>
-                  </div>
-                ))}
-              </div>
-              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '11px', color: 'var(--text-muted)', background: 'rgba(0,0,0,0.2)', padding: '6px', borderRadius: '6px' }}>
-                <span>ชนะ: <b>{cardLab.winProb}%</b></span>
-                <span>ดาร์บี้: <b>{cardLab.derbyProb}%</b></span>
-                <span>มังกร: <b>{cardLab.dragonProb}%</b></span>
-              </div>
-              <p style={{ fontSize: '11px', color: '#ffeab2', marginTop: '6px', fontStyle: 'italic' }}>{cardLab.hint}</p>
-            </div>
-
+ 
             {/* BUTTONS */}
-            <div style={{ display: 'flex', gap: '6px' }}>
+            <div style={{ display: 'flex', gap: '6px', marginBottom: '8px' }}>
               <button className="btn-secondary" style={{ flex: 1, padding: '10px' }} onClick={handleAutoArrange}><Sparkles size={14} style={{ marginRight: '3px' }} /> จัดให้</button>
-              <button className="btn-secondary" style={{ padding: '10px', fontSize: '13px', fontWeight: '800', whiteSpace: 'nowrap' }} onClick={handleSwapMidBack} title="สลับไพ่กองกลาง ↔ กองหลัง">⇅ กลาง/หลัง</button>
+              <button className="btn-secondary" style={{ padding: '10px', fontSize: '13px', fontWeight: '800', whiteSpace: 'nowrap' }} onClick={handleSwapMidBack}>⇅ สลับ</button>
               <button className="btn-secondary" style={{ padding: '10px' }} onClick={handleUndo}><Undo2 size={14} /></button>
               <button className="btn-secondary" style={{ padding: '10px' }} onClick={handleReset}><RotateCcw size={14} /></button>
               <button className="btn-premium" style={{ flex: 2, padding: '10px', fontSize: '15px' }} onClick={handleSubmitHand} disabled={hand.done}>
                 {hand.done ? '✓ ส่งไพ่แล้ว' : '⚔️ ส่งไพ่สู้!'}
               </button>
             </div>
+ 
+            {/* EMOJI DOCK */}
+            <div style={{ display: 'flex', justifyContent: 'space-around', paddingBottom: '4px' }}>
+              {['😂','😭','🔥','💸','🐉','👑','🎉'].map(emoji => (
+                <button key={emoji} className="quick-emoji-btn" onClick={() => handleSendEmoji(emoji)}>{emoji}</button>
+              ))}
+            </div>
           </div>
         </div>
       )}
-
-      {/* EMOJI DOCK */}
-      {room.status === 'playing' && (
-        <div className="quick-emoji-row" style={{ position: 'static', display: 'flex', flexWrap: 'wrap', justifyContent: 'center', gap: '6px', padding: '8px 10px', margin: '0 0 8px', background: 'rgba(0,0,0,0.25)', borderRadius: '12px' }}>
-          {['😂','😭','🔥','💸','🐉','👑','🎉'].map(emoji => (
-            <button key={emoji} className="quick-emoji-btn" onClick={() => handleSendEmoji(emoji)}>{emoji}</button>
-          ))}
-        </div>
-      )}
-
+ 
       {/* RESULTS */}
       {room.status === 'results' && (
         <div style={{ flex: 1, display: 'flex', flexDirection: 'column', background: '#081708', padding: '14px', overflowY: 'auto' }}>
@@ -741,12 +711,12 @@ export default function GameRoom({ player, memberId, roomId, onExit }) {
           </div>
         </div>
       )}
-
+ 
       {/* CHAT BUTTON */}
       <button className="btn-premium" style={{ position: 'fixed', bottom: '16px', right: '16px', width: '48px', height: '48px', borderRadius: '50%', boxShadow: '0 4px 12px rgba(0,0,0,0.5)', zIndex: 100 }} onClick={() => setChatOpen(!chatOpen)}>
         <MessageCircle size={20} />
       </button>
-
+ 
       {/* CHAT DRAWER */}
       {chatOpen && (
         <div style={{ position: 'fixed', inset: 'auto 0 0 0', zIndex: 200, display: 'flex', flexDirection: 'column', maxHeight: '50vh', background: '#1c1c28', borderTop: '2px solid var(--line)', borderRadius: '16px 16px 0 0' }}>
