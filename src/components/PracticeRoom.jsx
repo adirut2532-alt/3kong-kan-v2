@@ -134,15 +134,37 @@ export default function PracticeRoom({ player, onExit }) {
     }
   }
 
-  function dropCard(fromZone, fromIdx, toZone) {
+  function dropCard(fromZone, fromIdx, toZone, toIdx) {
     setHand(prev => {
       const h = { front:[...prev.front], mid:[...prev.mid], back:[...prev.back], unplaced:[...prev.unplaced], done:prev.done, foul:prev.foul };
       const fromArr = h[fromZone]; const toArr = h[toZone];
       const card = fromArr[fromIdx]; if (!card) return prev;
-      if (fromZone !== toZone) {
-        if (toZone !== 'unplaced' && h[toZone].length >= MAX[toZone]) {
-          const d = h[toZone].pop(); fromArr.splice(fromIdx,1); h[toZone].push(card); fromArr.splice(fromIdx,0,d);
-        } else { fromArr.splice(fromIdx,1); toArr.push(card); }
+
+      if (fromZone === toZone) {
+        // Same zone reorder
+        if (toIdx !== undefined && toIdx !== fromIdx && toIdx < fromArr.length) {
+          const tmp = fromArr[toIdx];
+          fromArr[toIdx] = card;
+          fromArr[fromIdx] = tmp;
+        }
+        return h;
+      }
+
+      // Different zones
+      if (toIdx !== undefined && toIdx < toArr.length) {
+        // Drop onto a specific card → swap them
+        const targetCard = toArr[toIdx];
+        fromArr[fromIdx] = targetCard;
+        toArr[toIdx] = card;
+      } else if (toZone !== 'unplaced' && toArr.length >= MAX[toZone]) {
+        // Zone full, no specific target → swap with last
+        const d = toArr.pop();
+        fromArr.splice(fromIdx, 1, d);
+        toArr.push(card);
+      } else {
+        // Zone has space → just move
+        fromArr.splice(fromIdx, 1);
+        toArr.push(card);
       }
       autoFillInto(h);
       return h;
@@ -274,18 +296,32 @@ export default function PracticeRoom({ player, onExit }) {
       if (g) g.style.opacity = '0';
       const under = document.elementFromPoint(ev.clientX, ev.clientY);
       if (g) { g.style.opacity = ''; g.style.display = 'none'; }
-      const dzEl = under ? under.closest('[data-zone]') : null;
-      const toZone = dzEl ? dzEl.dataset.zone : null;
       clearHover();
       el.style.opacity = '';
       if (!moved) {
         handleCardTap(card, zone, idx);
         return;
       }
-      if (!toZone || toZone === zone) return;
+
+      // Detect target card or zone
+      const targetCard = under ? under.closest('[data-card-zone]') : null;
+      const dzEl = under ? under.closest('[data-zone]') : null;
+
+      let toZone, toIdx;
+      if (targetCard) {
+        toZone = targetCard.dataset.cardZone;
+        toIdx = parseInt(targetCard.dataset.cardIdx, 10);
+      } else if (dzEl) {
+        toZone = dzEl.dataset.zone;
+        toIdx = undefined;
+      }
+
+      if (!toZone) return;
+      if (toZone === zone && toIdx === idx) return; // same card, do nothing
+
       const cur = handRef.current;
       setUndoStack(prev => [...prev.slice(-19), { front:[...cur.front], mid:[...cur.mid], back:[...cur.back], unplaced:[...cur.unplaced] }]);
-      dropCard(zone, idx, toZone);
+      dropCard(zone, idx, toZone, toIdx);
     }
     document.addEventListener('pointermove', onMove, { passive: false });
     document.addEventListener('pointerup', onUp);
@@ -294,7 +330,8 @@ export default function PracticeRoom({ player, onExit }) {
   function renderCard(c, i, zone) {
     const isRed = c.suit === '♥' || c.suit === '♦';
     return (
-      <div key={zone+i} className={`poker-card ${selectedCard===c?'glow-bonus':''} ${isRed?'red-card':'black-card'}`}
+      <div key={zone+i} data-card-zone={zone} data-card-idx={i}
+        className={`poker-card ${selectedCard===c?'glow-bonus':''} ${isRed?'red-card':'black-card'}`}
         onPointerDown={(e) => onCardPointerDown(e, c, zone, i)}
         style={{ touchAction:'none', userSelect:'none', cursor:'grab' }}>
         <span className="card-num" style={{ fontSize:'20px', fontWeight:900, lineHeight:1 }}>{c.rank}</span>
@@ -466,71 +503,86 @@ export default function PracticeRoom({ player, onExit }) {
         <div className="header-logo">🤖 โหมดซ้อมกับ AI</div>
         <button className="btn-secondary" style={{ padding:'6px 12px', fontSize:'11px', color:'#40e880' }} onClick={resetChips}>รีเซ็ตชิป</button>
       </div>
-      <div style={{ flex:1, padding:'14px', overflowY:'auto' }}>
-        <button className="btn-premium" style={{ width:'100%', padding:'14px', fontSize:'16px', fontWeight:900, marginBottom:'14px' }} onClick={startPractice}>
+      <div style={{ flex:1, padding:'10px 12px', overflowY:'auto', overflowX:'hidden' }}>
+        <button className="btn-premium" style={{ width:'100%', padding:'14px', fontSize:'16px', fontWeight:900, marginBottom:'10px' }} onClick={startPractice}>
           🎴 ฝึกฝนซ้อมมือ
         </button>
-        <button className="btn-secondary" style={{ width:'100%', padding:'10px', fontSize:'13px', marginBottom:'14px' }} onClick={() => setShowRules(!showRules)}>
+        <button className="btn-secondary" style={{ width:'100%', padding:'10px', fontSize:'13px', marginBottom:'10px' }} onClick={() => setShowRules(!showRules)}>
           📖 กติกาการเล่นเบื้องต้น
         </button>
         {showRules && (
-          <div className="glass-panel" style={{ padding:'16px', whiteSpace:'pre-wrap', fontSize:'13px', lineHeight:1.7, color:'var(--text-main)', marginBottom:'14px' }}>
+          <div className="glass-panel" style={{ padding:'14px', whiteSpace:'pre-wrap', fontSize:'12px', lineHeight:1.7, color:'var(--text-main)', marginBottom:'10px' }}>
             {RULES_TEXT}
           </div>
         )}
 
-        <h2 style={{ fontSize:'20px', fontWeight:900, color:'var(--primary)', textAlign:'center', marginBottom:'14px' }}>🏆 ผลการปะทะฝีมือรอบนี้</h2>
+        <h2 style={{ fontSize:'18px', fontWeight:900, color:'var(--primary)', textAlign:'center', marginBottom:'10px' }}>🏆 ผลการปะทะฝีมือรอบนี้</h2>
 
         {/* Score summary */}
-        <div className="glass-panel" style={{ padding:'14px', marginBottom:'14px' }}>
-          <div style={{ fontSize:'13px', fontWeight:900, color:'var(--primary)', marginBottom:'8px' }}>📊 ตารางคะแนนรวม</div>
+        <div className="glass-panel" style={{ padding:'10px', marginBottom:'12px' }}>
+          <div style={{ fontSize:'12px', fontWeight:900, color:'var(--primary)', marginBottom:'6px' }}>📊 ตารางคะแนนรวม</div>
           {scores && scores.map((s,i) => {
             const isMe = s.name === player.name;
             const isWin = s.roundScore > 0;
             return (
-              <div key={i} className="glass-panel" style={{ padding:'10px', marginBottom:'6px', borderLeft:`3px solid ${isWin?'#40e880':s.roundScore<0?'#ff6d86':'var(--line)'}`, background: isMe ? 'rgba(212,175,55,0.1)' : 'rgba(0,0,0,0.2)' }}>
-                <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center' }}>
-                  <span style={{ fontWeight:800, fontSize:'14px' }}>{s.avatar} {s.name} {isMe?'(คุณ)':''}</span>
-                  <span style={{ fontWeight:900, fontSize:'16px', color:isWin?'#40e880':s.roundScore<0?'#ff6d86':'#fff' }}>
-                    {isWin?'+':''}{s.roundScore} คะแนน
-                  </span>
-                </div>
-                {s.bonusLabel && <div style={{ fontSize:'10px', color:'var(--primary)', marginTop:'4px' }}>🌟 {s.bonusLabel}</div>}
+              <div key={i} style={{ display:'flex', justifyContent:'space-between', alignItems:'center', padding:'8px 10px', marginBottom:'4px', borderRadius:'8px', borderLeft:`3px solid ${isWin?'#40e880':s.roundScore<0?'#ff6d86':'var(--line)'}`, background: isMe ? 'rgba(212,175,55,0.1)' : 'rgba(0,0,0,0.2)' }}>
+                <span style={{ fontWeight:800, fontSize:'13px', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap', flex:1, minWidth:0 }}>{s.avatar} {s.name} {isMe?'(คุณ)':''}</span>
+                <span style={{ fontWeight:900, fontSize:'15px', color:isWin?'#40e880':s.roundScore<0?'#ff6d86':'#fff', marginLeft:'8px', flexShrink:0 }}>
+                  {isWin?'+':''}{s.roundScore} คะแนน
+                </span>
               </div>
             );
           })}
         </div>
 
         {/* Matchup details */}
-        <div style={{ fontSize:'13px', fontWeight:900, color:'var(--primary)', marginBottom:'8px' }}>⚔️ รายละเอียดการเทียบไพ่รายคู่ (คุณ ปะทะ บอท)</div>
+        <div style={{ fontSize:'12px', fontWeight:900, color:'var(--primary)', marginBottom:'8px' }}>⚔️ รายละเอียดเทียบไพ่ (คุณ ปะทะ บอท)</div>
         {matchups.map((mu, mi) => (
-          <div key={mi} className="glass-panel" style={{ padding:'14px', marginBottom:'10px' }}>
-            <div style={{ display:'flex', alignItems:'center', gap:'8px', marginBottom:'10px', justifyContent:'center' }}>
-              {mu.rows.every(r=>r.winner===1) && <span style={{ background:'rgba(212,175,55,0.2)', color:'var(--primary)', padding:'2px 8px', borderRadius:'6px', fontSize:'11px', fontWeight:900 }}>🔥 กิน ทะลุ</span>}
-              <span style={{ fontWeight:800 }}>{player.avatar} {player.name} (คุณ)</span>
-              <span style={{ background:'var(--glass)', padding:'2px 8px', borderRadius:'6px', fontWeight:900, fontSize:'12px' }}>VS</span>
-              <span style={{ fontWeight:800 }}>{mu.bot.avatar} {mu.bot.name}</span>
+          <div key={mi} className="glass-panel" style={{ padding:'10px', marginBottom:'10px', overflow:'hidden' }}>
+            <div style={{ display:'flex', alignItems:'center', gap:'6px', marginBottom:'8px', justifyContent:'center', flexWrap:'wrap' }}>
+              {mu.rows.every(r=>r.winner===1) && <span style={{ background:'rgba(212,175,55,0.2)', color:'var(--primary)', padding:'2px 6px', borderRadius:'6px', fontSize:'10px', fontWeight:900 }}>🔥 ทะลุ</span>}
+              <span style={{ fontWeight:800, fontSize:'12px' }}>{player.avatar} {player.name}</span>
+              <span style={{ background:'var(--glass)', padding:'1px 6px', borderRadius:'4px', fontWeight:900, fontSize:'10px' }}>VS</span>
+              <span style={{ fontWeight:800, fontSize:'12px' }}>{mu.bot.avatar} {mu.bot.name}</span>
             </div>
             {mu.rows.map((r,ri) => (
-              <div key={ri} style={{ display:'flex', alignItems:'center', justifyContent:'space-between', padding:'8px', marginBottom:'6px', background:'rgba(0,0,0,0.2)', borderRadius:'8px' }}>
-                <span style={{ fontSize:'10px', padding:'2px 6px', borderRadius:'4px', fontWeight:800, background: r.winner===1?'rgba(64,232,128,0.2)':r.winner===-1?'rgba(255,109,134,0.2)':'rgba(255,255,255,0.1)', color: r.winner===1?'#40e880':r.winner===-1?'#ff6d86':'#fff' }}>
-                  {r.winner===1?'ชนะ':r.winner===-1?'แพ้':'เสมอ'}
-                </span>
-                <div style={{ display:'flex', gap:'1px' }}>{r.a.map((c,ci) => renderSmallCard(c,ci))}</div>
-                <div style={{ textAlign:'center' }}>
-                  <div style={{ fontSize:'11px', fontWeight:800, color:'var(--primary)' }}>{r.label}</div>
-                  <div style={{ fontSize:'9px', color:'var(--text-muted)' }}>{r.aName} vs {r.bName}</div>
+              <div key={ri} style={{ marginBottom:'8px', background:'rgba(0,0,0,0.2)', borderRadius:'8px', padding:'6px 8px' }}>
+                {/* Row header: label + hand names + result */}
+                <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:'4px' }}>
+                  <span style={{ fontSize:'11px', fontWeight:800, color:'var(--primary)' }}>{r.label}</span>
+                  <span style={{ fontSize:'9px', color:'var(--text-muted)' }}>{r.aName} vs {r.bName}</span>
+                  <span style={{ fontSize:'10px', padding:'1px 6px', borderRadius:'4px', fontWeight:800, background: r.winner===1?'rgba(64,232,128,0.2)':r.winner===-1?'rgba(255,109,134,0.2)':'rgba(255,255,255,0.1)', color: r.winner===1?'#40e880':r.winner===-1?'#ff6d86':'#fff' }}>
+                    {r.winner===1?'ชนะ':r.winner===-1?'แพ้':'เสมอ'}
+                  </span>
                 </div>
-                <div style={{ display:'flex', gap:'1px' }}>{r.b.map((c,ci) => renderSmallCard(c,ci))}</div>
-                <span style={{ fontSize:'10px', padding:'2px 6px', borderRadius:'4px', fontWeight:800, background: r.winner===-1?'rgba(64,232,128,0.2)':r.winner===1?'rgba(255,109,134,0.2)':'rgba(255,255,255,0.1)', color: r.winner===-1?'#40e880':r.winner===1?'#ff6d86':'#fff' }}>
-                  {r.winner===-1?'ชนะ':r.winner===1?'แพ้':'เสมอ'}
-                </span>
+                {/* Cards row */}
+                <div style={{ display:'flex', alignItems:'center', justifyContent:'center', gap:'4px' }}>
+                  <div style={{ display:'flex', gap:'1px', flexShrink:0 }}>
+                    {r.a.map((c,ci) => {
+                      const isRed = c.suit==='♥'||c.suit==='♦';
+                      return <div key={ci} style={{ width:'28px', height:'38px', background:'#fff', borderRadius:'4px', display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', border:'1px solid #ddd', flexShrink:0 }}>
+                        <span style={{ fontSize:'12px', fontWeight:900, color:isRed?'#e53935':'#222', lineHeight:1 }}>{c.rank}</span>
+                        <span style={{ fontSize:'12px', color:isRed?'#e53935':'#222', lineHeight:1 }}>{c.suit}</span>
+                      </div>;
+                    })}
+                  </div>
+                  <span style={{ fontSize:'10px', color:'var(--text-muted)', margin:'0 2px' }}>vs</span>
+                  <div style={{ display:'flex', gap:'1px', flexShrink:0 }}>
+                    {r.b.map((c,ci) => {
+                      const isRed = c.suit==='♥'||c.suit==='♦';
+                      return <div key={ci} style={{ width:'28px', height:'38px', background:'#fff', borderRadius:'4px', display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', border:'1px solid #ddd', flexShrink:0 }}>
+                        <span style={{ fontSize:'12px', fontWeight:900, color:isRed?'#e53935':'#222', lineHeight:1 }}>{c.rank}</span>
+                        <span style={{ fontSize:'12px', color:isRed?'#e53935':'#222', lineHeight:1 }}>{c.suit}</span>
+                      </div>;
+                    })}
+                  </div>
+                </div>
               </div>
             ))}
           </div>
         ))}
 
-        <div style={{ textAlign:'center', marginTop:'20px', paddingBottom:'40px' }}>
+        <div style={{ textAlign:'center', marginTop:'16px', paddingBottom:'40px' }}>
           <button className="btn-premium" style={{ padding:'14px 40px', fontSize:'16px', fontWeight:900 }} onClick={startPractice}>
             🎴 เริ่มรอบใหม่!
           </button>
