@@ -2,9 +2,9 @@ import React, { useState, useEffect, useRef } from 'react';
 import { db } from '../App.jsx';
 import { RefreshCw, Play, ShieldAlert, Award, Star, Eye } from 'lucide-react';
 
-const CHIP_MULT = 35; // Player needs at least 35 times the rate to play
+const CHIP_MULT = 35;
 
-export default function Lobby({ player, memberId, onEnterRoom, onLogout }) {
+export default function Lobby({ player, memberId, onEnterRoom, onEnterPractice, onLogout }) {
   const [chips, setChips] = useState(player.chips || 0);
   const [level, setLevel] = useState(1);
   const [xp, setXp] = useState(0);
@@ -21,7 +21,6 @@ export default function Lobby({ player, memberId, onEnterRoom, onLogout }) {
 
   const winRate = games > 0 ? Math.round((wins / games) * 100) : 0;
 
-  // 1. Listen to player's account details (real-time chips, level, wins)
   useEffect(() => {
     if (!memberId) return;
     unsubChips.current = db.collection('members').doc(memberId).onSnapshot(snap => {
@@ -35,88 +34,57 @@ export default function Lobby({ player, memberId, onEnterRoom, onLogout }) {
         sessionStorage.setItem('gr_chips', String(d.chips || 0));
       }
     }, () => {});
-
-    return () => {
-      if (unsubChips.current) unsubChips.current();
-    };
+    return () => { if (unsubChips.current) unsubChips.current(); };
   }, [memberId]);
 
-  // 2. Fetch rooms in real time
   useEffect(() => {
     loadRooms();
     loadLeaderboard();
-    return () => {
-      if (unsubRooms.current) unsubRooms.current();
-    };
+    return () => { if (unsubRooms.current) unsubRooms.current(); };
   }, []);
 
   function loadRooms() {
     setLoadingRooms(true);
     if (unsubRooms.current) unsubRooms.current();
-
     db.collection('admin').doc('data').get().then(snap => {
       const adminRooms = (snap.exists ? snap.data().rooms : []).filter(r => r.code) || [];
-      if (!adminRooms.length) {
-        setRooms([]);
-        setLoadingRooms(false);
-        return;
-      }
-
-      // Start listening to the room documents listed by Admin
+      if (!adminRooms.length) { setRooms([]); setLoadingRooms(false); return; }
       unsubRooms.current = db.collection('admin').doc('data').onSnapshot(adminSnap => {
         if (!adminSnap.exists) return;
         const currentAdminRooms = (adminSnap.data().rooms || []).filter(r => r.code);
-
-        // Fetch each room's live status in real time
         Promise.all(currentAdminRooms.map(r => db.collection('rooms').doc(r.code).get()))
           .then(roomSnaps => {
             const compiled = currentAdminRooms.map((r, i) => {
               const fb = roomSnaps[i].exists ? roomSnaps[i].data() : {};
-              return {
-                ...r,
-                ...fb,
-                code: r.code,
-                adminName: r.name,
-                rate: r.rate,
-                commission: r.commission
-              };
+              return { ...r, ...fb, code: r.code, adminName: r.name, rate: r.rate, commission: r.commission };
             });
             setRooms(compiled);
             setLoadingRooms(false);
           });
       }, () => setLoadingRooms(false));
-    }).catch(() => {
-      setLoadingRooms(false);
-    });
+    }).catch(() => setLoadingRooms(false));
   }
 
   async function loadLeaderboard() {
     setLoadingLeaders(true);
     try {
       const snap = await db.collection('members').orderBy('totalProfit', 'desc').limit(8).get();
-      const rows = [];
-      snap.forEach(d => rows.push({ id: d.id, ...d.data() }));
+      const rows = []; snap.forEach(d => rows.push({ id: d.id, ...d.data() }));
       setLeaderboard(rows);
-    } catch (e) {
-      // Error fallback
-    } finally {
-      setLoadingLeaders(false);
-    }
+    } catch (e) {} finally { setLoadingLeaders(false); }
   }
 
   function handleRoomJoin(roomCode, rate, amInRoom) {
     const need = CHIP_MULT * rate;
     const hasChips = chips >= need;
-
     if (!amInRoom && !hasChips) {
-      alert(`🪙 ชิปไม่พอครับ\n\nห้องนี้อัตรา ${rate} ต้องมีชิปอย่างน้อย ${need} ชิป\nคุณมีอยู่ ${chips} ชิป\n\nกรุณาติดต่อแอดมินเพื่อเติมชิปก่อนเล่นครับ แต่คุณสามารถกดเข้าห้องเพื่อเข้าไปนั่งดูเพื่อนเล่นก่อนได้ครับ`);
+      alert(`🪙 ชิปไม่พอครับ\n\nห้องนี้อัตรา ${rate} ต้องมีชิปอย่างน้อย ${need} ชิป\nคุณมีอยู่ ${chips} ชิป`);
       onEnterRoom(roomCode);
       return;
     }
     onEnterRoom(roomCode);
   }
 
-  // Filtered rooms selector
   const filteredRooms = rooms.filter(r => {
     if (filter === 'waiting') return r.status === 'lobby' || !r.status;
     if (filter === 'playing') return r.status === 'playing' || r.status === 'results';
@@ -144,6 +112,29 @@ export default function Lobby({ player, memberId, onEnterRoom, onLogout }) {
         <div className="hero-chips">🪙 {Math.round(chips * 100) / 100}</div>
       </div>
 
+      {/* ═══ PRACTICE ROOM BUTTON ═══ */}
+      <button
+        className="btn-premium"
+        onClick={onEnterPractice}
+        style={{
+          width: '100%',
+          padding: '14px',
+          fontSize: '16px',
+          fontWeight: 900,
+          marginBottom: '14px',
+          background: 'linear-gradient(135deg, #1a5c2e 0%, #2d8a4e 50%, #1a5c2e 100%)',
+          border: '2px solid rgba(64, 232, 128, 0.4)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          gap: '10px',
+        }}
+      >
+        <span style={{ fontSize: '22px' }}>🤖</span>
+        <span>ห้องซ้อม — เล่นกับ AI ฟรี!</span>
+        <span style={{ fontSize: '10px', background: 'rgba(64,232,128,0.25)', padding: '2px 8px', borderRadius: '10px', color: '#40e880' }}>แนะนำ</span>
+      </button>
+
       {/* DAILY MISSIONS GRID */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '8px', marginBottom: '14px' }}>
         <div className="glass-panel" style={{ padding: '10px', textAlign: 'center', fontSize: '11px' }}>
@@ -160,13 +151,12 @@ export default function Lobby({ player, memberId, onEnterRoom, onLogout }) {
         </div>
       </div>
 
-      {/* LEADERBOARD VIEW */}
+      {/* LEADERBOARD */}
       <div className="glass-panel" style={{ padding: '14px', marginBottom: '16px' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '13px', fontWeight: '900', color: 'var(--primary)', marginBottom: '8px' }}>
           <span>🏆 จัดอันดับผู้สร้างกำไรสูงสุด</span>
           <span>Top Profit</span>
         </div>
-
         {loadingLeaders ? (
           <div style={{ textAlign: 'center', padding: '10px', color: 'var(--text-muted)', fontSize: '12px' }}>กำลังโหลดอันดับ...</div>
         ) : leaderboard.length === 0 ? (
@@ -174,19 +164,7 @@ export default function Lobby({ player, memberId, onEnterRoom, onLogout }) {
         ) : (
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '6px' }}>
             {leaderboard.map((m, i) => (
-              <div
-                key={m.id}
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '8px',
-                  background: 'rgba(0,0,0,0.2)',
-                  padding: '6px 10px',
-                  borderRadius: '8px',
-                  fontSize: '12px',
-                  fontWeight: '700'
-                }}
-              >
+              <div key={m.id} style={{ display: 'flex', alignItems: 'center', gap: '8px', background: 'rgba(0,0,0,0.2)', padding: '6px 10px', borderRadius: '8px', fontSize: '12px', fontWeight: '700' }}>
                 <span style={{ color: 'var(--primary)', width: '16px' }}>{i + 1}</span>
                 <span>{m.avatar || '🎴'}</span>
                 <span style={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{m.name || m.id}</span>
@@ -197,12 +175,11 @@ export default function Lobby({ player, memberId, onEnterRoom, onLogout }) {
         )}
       </div>
 
-      {/* REFRESH & FILTER TABS */}
+      {/* FILTER TABS */}
       <div style={{ display: 'flex', gap: '8px', marginBottom: '12px' }}>
         <button className="btn-secondary" style={{ padding: '8px 12px', display: 'flex', alignItems: 'center', gap: '4px' }} onClick={loadRooms}>
           <RefreshCw size={14} /> รีเฟรชห้อง
         </button>
-        
         <div style={{ display: 'flex', gap: '4px', overflowX: 'auto', flex: 1 }}>
           {[
             { key: 'all', label: '🏠 ทั้งหมด' },
@@ -210,26 +187,14 @@ export default function Lobby({ player, memberId, onEnterRoom, onLogout }) {
             { key: 'playing', label: '🎮 กำลังแข่ง' },
             { key: 'mine', label: '⭐ ของฉัน' }
           ].map(tab => (
-            <button
-              key={tab.key}
-              className="btn-secondary"
-              style={{
-                padding: '6px 12px',
-                fontSize: '12px',
-                whiteSpace: 'nowrap',
-                background: filter === tab.key ? 'var(--primary)' : 'var(--glass)',
-                color: filter === tab.key ? '#23180a' : 'var(--text-main)',
-                borderColor: filter === tab.key ? 'var(--primary)' : 'var(--line)'
-              }}
-              onClick={() => setFilter(tab.key)}
-            >
+            <button key={tab.key} className="btn-secondary" style={{ padding: '6px 12px', fontSize: '12px', whiteSpace: 'nowrap', background: filter === tab.key ? 'var(--primary)' : 'var(--glass)', color: filter === tab.key ? '#23180a' : 'var(--text-main)', borderColor: filter === tab.key ? 'var(--primary)' : 'var(--line)' }} onClick={() => setFilter(tab.key)}>
               {tab.label}
             </button>
           ))}
         </div>
       </div>
 
-      {/* ROOMS LISTING GRID */}
+      {/* ROOMS */}
       {loadingRooms ? (
         <div style={{ textAlign: 'center', padding: '40px', color: 'var(--text-muted)' }}>
           <div style={{ display: 'inline-block', width: '24px', height: '24px', border: '3px solid rgba(212, 175, 55, 0.2)', borderTopColor: 'var(--primary)', borderRadius: '50%', animation: 'spin .6s linear infinite', marginBottom: '8px' }}></div>
@@ -256,17 +221,14 @@ export default function Lobby({ player, memberId, onEnterRoom, onLogout }) {
                   <span>{isPlaying ? '🎮 กำลังเล่น' : activePlayers.length > 0 ? '⏳ รอผู้เล่น' : '🟢 ว่าง'}</span>
                   <span>{activePlayers.length}/4</span>
                 </div>
-                
                 <div className="room-body">
                   <div className="room-code">{r.code}</div>
                   <div className="room-title">{r.adminName || r.name || 'ห้องเกม'}</div>
-                  
                   <div className="room-rate-badge">
                     💵 อัตรา <b>{rate}</b> {r.commission ? `• คอม ${r.commission}%` : ''}
                     <br />
                     🪙 ต้องมี <b>{need}</b> ชิป <span style={{ color: hasChips ? '#40e880' : '#ff6d86' }}>{hasChips ? '(พอเล่น ✓)' : '(ชิปไม่พอ)'}</span>
                   </div>
-
                   <div className="room-seats">
                     {Array(4).fill(0).map((_, idx) => {
                       const p = activePlayers[idx];
@@ -277,29 +239,16 @@ export default function Lobby({ player, memberId, onEnterRoom, onLogout }) {
                       );
                     })}
                   </div>
-
                   {amInRoom ? (
-                    <button
-                      className="btn-premium"
-                      style={{ width: '100%', padding: '8px', fontSize: '12px' }}
-                      onClick={() => handleRoomJoin(r.code, rate, true)}
-                    >
+                    <button className="btn-premium" style={{ width: '100%', padding: '8px', fontSize: '12px' }} onClick={() => handleRoomJoin(r.code, rate, true)}>
                       <Play size={12} /> กลับเข้าห้อง
                     </button>
                   ) : isLobby && !isFull ? (
-                    <button
-                      className="btn-premium"
-                      style={{ width: '100%', padding: '8px', fontSize: '12px' }}
-                      onClick={() => handleRoomJoin(r.code, rate, false)}
-                    >
+                    <button className="btn-premium" style={{ width: '100%', padding: '8px', fontSize: '12px' }} onClick={() => handleRoomJoin(r.code, rate, false)}>
                       เข้าร่วมสู้ →
                     </button>
                   ) : (
-                    <button
-                      className="btn-secondary"
-                      style={{ width: '100%', padding: '8px', fontSize: '12px', display: 'flex', alignItems: 'center', justifyCenter: 'center', gap: '4px' }}
-                      onClick={() => handleRoomJoin(r.code, rate, false)}
-                    >
+                    <button className="btn-secondary" style={{ width: '100%', padding: '8px', fontSize: '12px', display: 'flex', alignItems: 'center', gap: '4px' }} onClick={() => handleRoomJoin(r.code, rate, false)}>
                       <Eye size={12} /> นั่งชมเกม
                     </button>
                   )}
@@ -312,11 +261,7 @@ export default function Lobby({ player, memberId, onEnterRoom, onLogout }) {
 
       {/* LOGOUT */}
       <div style={{ textAlign: 'center', marginTop: '30px' }}>
-        <button
-          onClick={onLogout}
-          className="btn-secondary"
-          style={{ padding: '8px 24px', fontSize: '12px', border: '1px solid rgba(255, 77, 109, 0.35)', color: '#ff9aac' }}
-        >
+        <button onClick={onLogout} className="btn-secondary" style={{ padding: '8px 24px', fontSize: '12px', border: '1px solid rgba(255, 77, 109, 0.35)', color: '#ff9aac' }}>
           ← ออกจากระบบ
         </button>
       </div>
