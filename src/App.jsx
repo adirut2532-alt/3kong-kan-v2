@@ -25,26 +25,24 @@ import Register from './components/Register.jsx';
 import Lobby from './components/Lobby.jsx';
 import GameRoom from './components/GameRoom';
 import AdminPanel from './components/AdminPanel.jsx';
+import PracticeRoom from './components/PracticeRoom.jsx';
 
 export default function App() {
-  const [screen, setScreen] = useState('login'); // login | register | lobby | game-room | admin
+  const [screen, setScreen] = useState('login');
   const [player, setPlayer] = useState(null);
   const [memberId, setMemberId] = useState('');
   const [activeRoomId, setActiveRoomId] = useState('');
 
-  // Handle successful login
   function handleLoginSuccess(playerObj, userMemberId) {
     setPlayer(playerObj);
     setMemberId(userMemberId);
     setScreen('lobby');
   }
 
-  // Handle successful registration
   function handleRegisterSuccess() {
     setScreen('login');
   }
 
-  // Handle logout
   function handleLogout() {
     sessionStorage.clear();
     setPlayer(null);
@@ -52,16 +50,22 @@ export default function App() {
     setScreen('login');
   }
 
-  // Enter a specific poker room
   function handleEnterRoom(roomId) {
     setActiveRoomId(roomId);
     setScreen('game-room');
   }
 
-  // Exit current room back to Lobby
   function handleExitRoom() {
     setScreen('lobby');
     setActiveRoomId('');
+  }
+
+  function handleEnterPractice() {
+    setScreen('practice');
+  }
+
+  function handleExitPractice() {
+    setScreen('lobby');
   }
 
   return (
@@ -86,6 +90,7 @@ export default function App() {
           player={player}
           memberId={memberId}
           onEnterRoom={handleEnterRoom}
+          onEnterPractice={handleEnterPractice}
           onLogout={handleLogout}
         />
       )}
@@ -96,6 +101,13 @@ export default function App() {
           memberId={memberId}
           roomId={activeRoomId}
           onExit={handleExitRoom}
+        />
+      )}
+
+      {screen === 'practice' && (
+        <PracticeRoom
+          player={player}
+          onExit={handleExitPractice}
         />
       )}
 
