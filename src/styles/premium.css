@@ -379,55 +379,134 @@ html, body {
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: 24px 16px;
-  min-height: 200px;
+  padding: 50px 24px 75px 24px;
+  min-height: auto;
   overflow: hidden;
+  background: 
+    radial-gradient(circle at 50% 10%, rgba(30, 20, 15, 0.4), transparent 60%),
+    linear-gradient(to bottom, #07070a 0%, #15110f 60%, #251d1a 100%);
+  border-radius: var(--border-radius-md);
+  box-shadow: inset 0 0 40px rgba(0,0,0,0.85);
 }
 
 .table-oval {
-  width: 98%;
-  height: 90%;
+  width: 92%;
+  max-width: 320px;
+  aspect-ratio: 1 / 1;
   background: 
-    radial-gradient(ellipse at 50% 42%, rgba(34, 132, 79, 0.94), rgba(7, 49, 31, 0.92) 58%, rgba(3, 20, 16, 0.99) 100%),
-    linear-gradient(135deg, rgba(255,255,255,0.06), transparent);
-  border-radius: 150px;
-  border: 12px solid #28140c;
+    radial-gradient(circle at 50% 50%, rgba(46, 182, 108, 0.95), rgba(7, 59, 37, 0.96) 60%, rgba(2, 16, 12, 1) 100%),
+    linear-gradient(135deg, rgba(255,255,255,0.08), transparent);
+  border-radius: 36px;
+  border: 12px solid #3c1e12;
   box-shadow: 
-    inset 0 0 55px rgba(0,0,0,0.85),
-    0 20px 50px rgba(0,0,0,0.65),
-    0 0 0 3px var(--primary),
-    var(--shadow-glow);
-  transform: perspective(800px) rotateX(6deg);
+    inset 0 0 45px rgba(0,0,0,0.9),
+    inset 0 0 0 2px #d4af37,
+    0 16px 36px rgba(0,0,0,0.6);
+  transform: perspective(800px) rotateX(8deg);
   display: flex;
   align-items: center;
   justify-content: center;
   position: relative;
 }
 
-.table-logo-text {
-  font-size: 15px;
-  color: rgba(212, 175, 55, 0.2);
-  font-weight: 900;
-  letter-spacing: 7px;
-  text-transform: uppercase;
-  text-shadow: 0 0 12px rgba(212, 175, 55, 0.1);
-  pointer-events: none;
+/* Practice room style overrides */
+.practice-felt {
+  padding: 24px 12px 32px 12px;
 }
 
-/* Player boxes placed on the felt */
-.felt-player-box {
+.practice-oval {
+  width: 98% !important;
+  max-width: 580px !important;
+}
+
+/* Elegant gold betting track inside the felt */
+.table-oval::before {
+  content: '';
   position: absolute;
-  background: linear-gradient(180deg, rgba(30, 30, 46, 0.94), rgba(10, 10, 15, 0.88));
-  border: 1px solid var(--line);
-  border-radius: var(--border-radius-md);
-  padding: 8px 10px;
-  box-shadow: 0 10px 24px rgba(0, 0, 0, 0.55);
+  top: 6%;
+  left: 6%;
+  right: 6%;
+  bottom: 6%;
+  border: 1.5px dashed rgba(212, 175, 55, 0.28);
+  border-radius: inherit;
+  pointer-events: none;
+  box-shadow: 
+    inset 0 0 20px rgba(212, 175, 55, 0.06),
+    0 0 20px rgba(212, 175, 55, 0.06);
+  z-index: 1;
+}
+
+/* Elegant Table Felt Logo text styling */
+.table-logo-container {
   display: flex;
   flex-direction: column;
   align-items: center;
   gap: 3px;
+  pointer-events: none;
+  user-select: none;
+  z-index: 2;
+  opacity: 0.85; /* Make it clearly visible since it is gold emboss */
+}
+
+.table-logo-title-3d {
+  font-size: 28px;
+  font-weight: 900;
+  text-transform: uppercase;
+  letter-spacing: 4px;
+  background: linear-gradient(to bottom, #ffe57f 0%, #ffc107 50%, #b88a13 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  filter: drop-shadow(0 2px 4px rgba(0,0,0,0.8));
+  text-shadow: 
+    0 1px 0 #99700b,
+    0 2px 0 #88600a,
+    0 3px 0 #775009,
+    0 4px 0 #664008,
+    0 5px 12px rgba(0,0,0,0.7);
+  font-family: 'Kanit', sans-serif;
+  line-height: 1.1;
+  text-align: center;
+}
+
+.table-logo-subtitle-3d {
+  font-size: 11px;
+  font-weight: 800;
+  color: rgba(212, 175, 55, 0.65);
+  letter-spacing: 3px;
+  text-shadow: 0 1px 2px rgba(0,0,0,0.5);
+  text-transform: uppercase;
+}
+
+.table-logo-simple {
+  font-size: 16px;
+}
+
+.practice-oval .table-logo-simple {
+  font-size: 22px;
+  color: rgba(212, 175, 55, 0.18);
+  font-weight: 900;
+  letter-spacing: 5px;
+  text-transform: uppercase;
+  text-shadow: 0 1px 2px rgba(0,0,0,0.5);
+  pointer-events: none;
+  user-select: none;
+  z-index: 2;
+  font-family: 'Kanit', sans-serif;
+}
+
+/* Player boxes placed on the felt - Clean and borderless avatar style */
+.felt-player-box {
+  position: absolute;
+  background: none;
+  border: none;
+  box-shadow: none;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
   min-width: 90px;
-  max-width: 110px;
+  max-width: 115px;
   z-index: 20;
 }
 
@@ -435,38 +514,74 @@ html, body {
 .felt-pos-top   { top: -20px; left: 50%; transform: translateX(-50%); }
 .felt-pos-left  { left: -10px; top: 45%; transform: translateY(-50%) scale(0.9); }
 .felt-pos-right { right: -10px; top: 45%; transform: translateY(-50%) scale(0.9); }
+.felt-pos-bottom { bottom: -20px; left: 50%; transform: translateX(-50%); }
 
 .felt-av {
-  width: 36px;
-  height: 36px;
+  width: 50px;
+  height: 50px;
   border-radius: 50%;
-  background: linear-gradient(135deg, rgba(255,220,80,0.25), rgba(200,140,20,0.15));
-  border: 2px solid rgba(255,220,80,0.45);
+  background: radial-gradient(circle, #252538 0%, #0a0a0f 100%);
+  border: 2px solid #d4af37;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 20px;
+  font-size: 26px;
+  box-shadow: 
+    0 4px 10px rgba(0, 0, 0, 0.6),
+    0 0 10px rgba(212, 175, 55, 0.3);
+  position: relative;
 }
+
+/* Elegant direction overlays on player boxes */
+.felt-direction-badge {
+  position: absolute;
+  top: 32px;
+  left: -14px;
+  font-size: 9px;
+  font-weight: 900;
+  color: #fff;
+  padding: 1px 5px;
+  border-radius: 4px;
+  z-index: 25;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.5);
+  letter-spacing: 0.5px;
+  white-space: nowrap;
+}
+.felt-dir-north { background: #ea4335; }
+.felt-dir-south { background: #34a853; color: #fff; }
+.felt-dir-east  { background: #a855f7; }
+.felt-dir-west  { background: #1a73e8; }
 
 .felt-nm {
   font-size: 11px;
   font-weight: 800;
-  color: var(--text-main);
-  text-align: center;
-  max-width: 80px;
+  color: #fff;
+  background: rgba(10, 10, 15, 0.85);
+  border: 1.5px solid rgba(255, 255, 255, 0.08);
+  padding: 2px 8px;
+  border-radius: 12px;
+  max-width: 95px;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+  text-align: center;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.3);
 }
 
 .felt-chips {
   font-size: 10px;
   font-weight: 900;
-  color: #ffe08a;
-  background: rgba(0,0,0,0.3);
-  padding: 1px 6px;
-  border-radius: var(--border-radius-sm);
-  border: 1px solid rgba(212, 175, 55, 0.15);
+  color: #ffd700;
+  background: rgba(0, 0, 0, 0.75);
+  padding: 2px 8px;
+  border-radius: 20px;
+  border: 1px solid rgba(212, 175, 55, 0.35);
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  box-shadow: 
+    0 2px 4px rgba(0, 0, 0, 0.3),
+    inset 0 0 5px rgba(212, 175, 55, 0.2);
 }
 
 /* ── CARDS ── */
@@ -485,6 +600,9 @@ html, body {
   padding: 5px;
   cursor: grab;
   user-select: none;
+  -webkit-user-select: none;
+  touch-action: none; /* Stops mobile screen scrolling/panning when dragging cards */
+  -webkit-user-drag: element; /* Informs iOS webviews that cards are draggable */
   transition: transform 0.15s, box-shadow 0.15s;
 }
 
@@ -499,15 +617,16 @@ html, body {
 }
 
 .card-num {
-  font-size: 17px;
+  font-size: 25px;
   font-weight: 900;
   line-height: 0.9;
 }
 
 .card-suit {
-  font-size: 22px;
+  font-size: 28px;
   align-self: flex-end;
   line-height: 1;
+  margin-top: -6px;
 }
 
 /* Rearranging Zone styling */
@@ -556,9 +675,9 @@ html, body {
 
 /* ── CHAT Quick Actions panel ── */
 .quick-emoji-row {
-  position: fixed;
+  position: absolute;
   left: 50%;
-  bottom: calc(76px + env(safe-area-inset-bottom, 0px));
+  bottom: 8px;
   transform: translateX(-50%);
   z-index: 60;
   display: flex;
@@ -569,6 +688,53 @@ html, body {
   padding: 5px;
   box-shadow: var(--shadow-soft);
   backdrop-filter: blur(14px);
+}
+
+/* Emoji row OUTSIDE table felt - prevents blocking card zones */
+.quick-emoji-row-outside {
+  display: flex;
+  justify-content: center;
+  gap: 4px;
+  background: rgba(10, 10, 15, 0.65);
+  border-top: 1px solid rgba(212, 175, 55, 0.12);
+  border-bottom: 1px solid rgba(212, 175, 55, 0.12);
+  padding: 4px 8px;
+  flex-shrink: 0;
+}
+
+.unplaced-container {
+  width: 100%;
+}
+
+.unplaced-zone {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  align-items: center;
+  min-height: 90px;
+  background: rgba(255, 255, 255, 0.03);
+  border: 2px dashed rgba(212, 175, 55, 0.2);
+  border-radius: var(--border-radius-sm);
+  padding: 6px 8px;
+  position: relative;
+  overflow: visible;
+  gap: 4px;
+}
+
+.unplaced-zone .poker-card {
+  margin-left: 0;
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.35);
+  transition: transform 0.2s, margin 0.2s;
+}
+
+.unplaced-zone .poker-card:first-child {
+  margin-left: 0;
+}
+
+.unplaced-zone .poker-card:active,
+.unplaced-zone .poker-card.glow-bonus {
+  transform: translateY(-8px) scale(1.1);
+  z-index: 30;
 }
 
 .quick-emoji-btn {
@@ -589,16 +755,34 @@ html, body {
   transform: scale(0.9);
 }
 
+/* ── DRAG GHOST (Mobile touch drag feedback) ── */
+.drag-ghost {
+  pointer-events: none;
+  z-index: 9999;
+}
+
+.poker-card.dragging {
+  opacity: 0.3;
+  transform: scale(0.9);
+}
+
+/* My hand area */
+.my-hand {
+  padding: 8px 10px;
+  background: linear-gradient(180deg, rgba(20, 20, 32, 0.98), rgba(10, 10, 15, 0.99));
+  border-top: 2px solid var(--line);
+  flex-shrink: 0;
+}
+
 /* ── BATTLE AND SCORING SPECIAL EFFECT ANIMATIONS ── */
 
 @keyframes scorePopUp {
-  0% { transform: scale(0.4) rotate(-5deg); opacity: 0; }
-  60% { transform: scale(1.15) rotate(3deg); opacity: 1; }
-  100% { transform: scale(1) rotate(0deg); }
+  0% { transform: scale(0.95); opacity: 0; }
+  100% { transform: scale(1); opacity: 1; }
 }
 
 .animate-pop-up {
-  animation: scorePopUp 0.65s cubic-bezier(0.175, 0.885, 0.32, 1.275) both;
+  animation: scorePopUp 0.4s cubic-bezier(0.16, 1, 0.3, 1) both;
 }
 
 .glow-bonus {
@@ -610,37 +794,163 @@ html, body {
   50% { box-shadow: 0 0 20px 4px rgba(212, 175, 55, 0.75); }
 }
 
-/* Responsive card sizing */
+/* Responsive card sizing & Mobile compactness overrides */
 @media (max-width: 430px) {
   .poker-card {
-    width: calc((100vw - 90px) / 5);
-    max-width: 50px;
+    width: 46px;
     height: auto;
     aspect-ratio: 52/72;
     padding: 3px;
   }
   
   .card-num {
-    font-size: 14px;
+    font-size: 22px;
   }
   
   .card-suit {
-    font-size: 18px;
+    font-size: 24px;
+    margin-top: -6px;
+  }
+
+  /* Unplaced zone cards - bigger on mobile */
+  .unplaced-zone .poker-card {
+    width: 48px;
   }
   
   .felt-player-box {
-    transform: scale(0.85);
+    transform: scale(0.78);
   }
   
   .felt-pos-top {
-    transform: translateX(-50%) scale(0.85);
+    transform: translateX(-50%) scale(0.78);
+    top: -24px;
   }
   
   .felt-pos-left {
-    transform: translateY(-50%) scale(0.78);
+    transform: translateY(-50%) scale(0.72);
+    left: -18px;
   }
   
   .felt-pos-right {
-    transform: translateY(-50%) scale(0.78);
+    transform: translateY(-50%) scale(0.72);
+    right: -18px;
   }
+
+  .felt-pos-bottom {
+    transform: translateX(-50%) scale(0.78);
+    bottom: -24px;
+  }
+
+  /* Overlapping cards layout on small viewports */
+  .unplaced-zone {
+    min-height: 80px !important;
+    padding: 5px 6px !important;
+    gap: 3px !important;
+  }
+  
+  .unplaced-zone .poker-card {
+    margin-left: 0 !important;
+  }
+  
+  .unplaced-zone .poker-card:first-child {
+    margin-left: 0 !important;
+  }
+
+  /* Compress spaces for mobile */
+  .my-hand {
+    padding: 4px 6px !important;
+    gap: 3px !important;
+  }
+  
+  .hand-pile-container {
+    padding: 2px 4px !important;
+    gap: 3px !important;
+  }
+  
+  .drop-zone {
+    min-height: 48px !important;
+    padding: 2px !important;
+    gap: 2px !important;
+  }
+  
+  .drop-zone.pile-full {
+    background: rgba(50, 232, 117, 0.02) !important;
+  }
+
+  /* Compact Gauges */
+  .my-hand .glass-panel {
+    padding: 4px 6px !important;
+    margin-bottom: 2px !important;
+  }
+  
+  .my-hand select {
+    padding: 1px 4px !important;
+    font-size: 10px !important;
+  }
+  
+  .my-hand .glass-panel div[style*="font-size: 15px"] {
+    font-size: 11px !important;
+  }
+  
+  .my-hand .glass-panel div[style*="font-size: 10px"] {
+    padding: 2px !important;
+  }
+  
+  /* Compact Action buttons */
+  .my-hand button {
+    padding: 5px 6px !important;
+    font-size: 10px !important;
+  }
+  
+  .my-hand button.btn-premium {
+    font-size: 11px !important;
+  }
+
+  /* Emoji row compact on mobile */
+  .quick-emoji-row-outside {
+    padding: 3px 4px;
+    gap: 3px;
+  }
+  
+  .quick-emoji-row-outside .quick-emoji-btn {
+    width: 28px;
+    height: 28px;
+    font-size: 14px;
+  }
+
+  /* Table felt compact */
+  .table-felt {
+    min-height: auto !important;
+    padding: 50px 16px 75px 16px !important;
+  }
+
+  .table-oval {
+    width: 90% !important;
+    max-width: 280px !important;
+    border-radius: 28px !important;
+    border: 10px solid #3c1e12 !important;
+  }
+
+  .practice-felt {
+    padding: 20px 8px 30px 8px !important;
+  }
+
+  .practice-oval {
+    width: 98% !important;
+    max-width: 380px !important;
+  }
+
+  .practice-oval .table-logo-simple {
+    font-size: 16px !important;
+  }
+}
+
+/* Spin animation for refresh */
+@keyframes spinAnim {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+.spin-anim {
+  animation: spinAnim 1s linear infinite;
 }
