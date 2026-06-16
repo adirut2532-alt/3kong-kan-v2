@@ -15,13 +15,20 @@ export default function Login({ onLoginSuccess, navigateToRegister, navigateToAd
     return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
   }
 
-  // Auto-login if session exists
   useEffect(() => {
-    const session = sessionStorage.getItem('player');
-    const memberId = sessionStorage.getItem('gr_memberId');
-    if (session && memberId) {
-      const d = JSON.parse(session);
-      onLoginSuccess(d, memberId);
+    try {
+      const session = sessionStorage.getItem('player');
+      const memberId = sessionStorage.getItem('gr_memberId');
+      if (session && memberId) {
+        const d = JSON.parse(session);
+        if (d && typeof d === 'object') {
+          onLoginSuccess(d, memberId);
+        }
+      }
+    } catch (err) {
+      console.error("Failed to parse auto-login session:", err);
+      sessionStorage.removeItem('player');
+      sessionStorage.removeItem('gr_memberId');
     }
   }, []);
 
