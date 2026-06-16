@@ -383,7 +383,10 @@ export default function GameRoom({ player, memberId, roomId, onExit }) {
         
         const activeP = pList.filter(p => !p.isSpectator && !p.isQueue);
         // hands are stored by memberId (p.id)
-        const allDone = activeP.length >= 2 && activeP.every(p => (d.hands || {})[p.id]?.done);
+        const allDone = activeP.length >= 2 && activeP.every(p => {
+          const h = d.hands || {};
+          return h[p.id]?.done || h[p.name]?.done;
+        });
         if (allDone && d.status === 'playing' && d.settledRound !== d.round && !settlingRef.current) {
           if (me.isHost) {
             settleScores();
@@ -528,7 +531,10 @@ export default function GameRoom({ player, memberId, roomId, onExit }) {
         .filter(p => !p.isSpectator && !p.isQueue);
 
       if (playingP.length < 2) return;
-      if (!playingP.every(p => (fd.hands || {})[p.id]?.done)) return;
+      if (!playingP.every(p => {
+        const h = fd.hands || {};
+        return h[p.id]?.done || h[p.name]?.done;
+      })) return;
 
       // 2. Calculate scores (pure computation, instant)
       const scores = calcScores(playingP, fd.hands || {});
@@ -619,7 +625,7 @@ export default function GameRoom({ player, memberId, roomId, onExit }) {
         const finalWinRate = Math.round((finalWins / finalGames) * 100);
         const finalTotalProfit = Math.round((currentTotalProfit + amt) * 100) / 100;
 
-        const isDragon = isDragonHand((fd.hands || {})[p.id]);
+        const isDragon = isDragonHand((fd.hands || {})[p.id] || (fd.hands || {})[p.name]);
         const sc = scores.find(s => s.name === p.name);
         const isDerby = sc?.isDarby || false;
         const earnedTalu = sc?.taluCount || 0;
