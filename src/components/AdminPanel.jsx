@@ -296,10 +296,14 @@ export default function AdminPanel({ onBack }) {
     const note = cur > 0 ? 'เซ็ตชิปเป็น 0' : 'เซ็ตชิปเป็น 0 (ล้างยอดติดลบ)';
 
     try {
+      const snap = await db.collection('members').doc(memberId).get();
+      const existingTxns = (snap.exists && snap.data().txns) || [];
       const txRecord = { t: now, ty: transactionType, amt, bal: newBal, note };
+      const updatedTxns = [...existingTxns, txRecord].slice(-30);
+
       await db.collection('members').doc(memberId).update({
         chips: newBal,
-        txns: firebase.firestore.FieldValue.arrayUnion(txRecord)
+        txns: updatedTxns
       });
       alert(`เซ็ตชิปของ "${name}" ให้เหลือ 0 เรียบร้อยแล้ว`);
       loadMembers();
@@ -365,9 +369,12 @@ export default function AdminPanel({ onBack }) {
           const note = cur > 0 ? 'เซ็ตชิปเป็น 0 (ล้างชิปทั้งหมด)' : 'เซ็ตชิปเป็น 0 (ล้างชิปทั้งหมด - ยอดติดลบ)';
           const txRecord = { t: now, ty: transactionType, amt, bal: 0, note };
           
+          const existingTxns = data.txns || [];
+          const updatedTxns = [...existingTxns, txRecord].slice(-30);
+
           batch.update(docSnap.ref, {
             chips: 0,
-            txns: firebase.firestore.FieldValue.arrayUnion(txRecord)
+            txns: updatedTxns
           });
           count++;
         }
@@ -419,12 +426,15 @@ export default function AdminPanel({ onBack }) {
     }
 
     try {
+      const snap = await db.collection('members').doc(chipsTarget.id).get();
+      const existingTxns = (snap.exists && snap.data().txns) || [];
       const txRecord = { t: now, ty: transactionType, amt, bal: newBal, note: chipsNote.trim() };
+      const updatedTxns = [...existingTxns, txRecord].slice(-30);
+
       await db.collection('members').doc(chipsTarget.id).update({
         chips: newBal,
         approved: true,
-        // Using batch update helper or standard array operations
-        txns: firebase.firestore.FieldValue.arrayUnion(txRecord)
+        txns: updatedTxns
       });
 
       setShowChipsModal(false);

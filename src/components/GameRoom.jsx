@@ -604,6 +604,7 @@ export default function GameRoom({ player, memberId, roomId, onExit }) {
         let currentLevel = 1, currentXp = 0, currentGames = 0, currentWins = 0;
         let currentTotalProfit = 0, currentDerbyCount = 0, currentDragonCount = 0, currentTaluCount = 0;
         let cur = 0;
+        let existingTxns = [];
 
         if (mSnap && mSnap.exists) {
           const mData = mSnap.data();
@@ -616,6 +617,7 @@ export default function GameRoom({ player, memberId, roomId, onExit }) {
           currentDerbyCount = mData.derbyCount || 0;
           currentDragonCount = mData.dragonCount || 0;
           currentTaluCount = mData.taluCount || 0;
+          existingTxns = mData.txns || [];
         }
 
         const finalChips = Math.round((cur + amt) * 100) / 100;
@@ -648,6 +650,15 @@ export default function GameRoom({ player, memberId, roomId, onExit }) {
         const grossChips = pts * rate;
         const commDeducted = (grossChips > 0 && commissionPercent > 0) ? grossChips * (commissionPercent / 100) : 0;
 
+        const newTxn = {
+          t: Date.now(),
+          ty: amt >= 0 ? 'win' : 'lose',
+          amt: Math.abs(amt),
+          bal: finalChips,
+          note: `รอบ ${fd.round} ห้อง #${roomId} (คะแนน ${pts} x ${rate}${commDeducted > 0 ? ` - ต๋ง ${commissionPercent}%` : ''})`
+        };
+        const updatedTxns = [...existingTxns, newTxn].slice(-30);
+
         batch.set(db.collection('members').doc(p.id), {
           chips: finalChips,
           games: finalGames,
@@ -659,13 +670,7 @@ export default function GameRoom({ player, memberId, roomId, onExit }) {
           taluCount: finalTaluCount,
           level: newLevel,
           xp: newXp,
-          txns: firebase.firestore.FieldValue.arrayUnion({
-            t: Date.now(),
-            ty: amt >= 0 ? 'win' : 'lose',
-            amt: Math.abs(amt),
-            bal: finalChips,
-            note: `รอบ ${fd.round} ห้อง #${roomId} (คะแนน ${pts} x ${rate}${commDeducted > 0 ? ` - ต๋ง ${commissionPercent}%` : ''})`
-          })
+          txns: updatedTxns
         }, { merge: true });
 
         // Queue room update for this player's chips
