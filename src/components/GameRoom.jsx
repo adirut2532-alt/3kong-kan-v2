@@ -333,8 +333,21 @@ export default function GameRoom({ player, memberId, roomId, onExit }) {
 
       setRoom(d);
       const pList = Object.entries(d.players || {}).map(([id, val]) => ({ id, ...val }));
-      const me = pList.find(x => x.name === player.name);
-      if (me) { setMyId(me.id); setIsHost(me.isHost || false); }
+      const me = pList.find(x => x.id === memberId);
+      
+      if (myId && !me) {
+        alert('คุณถูกเตะออกจากห้อง หรือห้องนี้ถูกปิดแล้วครับ');
+        onExit();
+        return;
+      }
+
+      if (me) { 
+        setMyId(me.id); 
+        setIsHost(me.isHost || false); 
+      } else {
+        setMyId('');
+        setIsHost(false);
+      }
       setPlayers(pList);
  
       if (d.status === 'playing' && me) {
