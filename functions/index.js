@@ -357,7 +357,7 @@ exports.settleRound = functions.https.onCall(async (data, context) => {
       scores.forEach(s => {
         if (handsData[s.name].foul) return;
         const opps = scores.filter(o => o.id !== s.id && !handsData[o.name].foul);
-        if (opps.length >= 2 && s._tw === opps.length) s.isDarby = true;
+        if (active.length >= 4 && opps.length >= 2 && s._tw === opps.length) s.isDarby = true;
       });
 
       if (scores.some(s => s.isDarby)) {

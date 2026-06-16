@@ -279,7 +279,7 @@ export function calcScores(players, hands) {
   sc.forEach(s => {
     if (h(s).foul) return;
     const opps = sc.filter(o => o.id !== s.id && !h(o).foul);
-    if (opps.length >= 2 && s._tw === opps.length) s.isDarby = true;
+    if (n >= 4 && opps.length >= 2 && s._tw === opps.length) s.isDarby = true;
   });
 
   if (sc.some(s => s.isDarby)) {
