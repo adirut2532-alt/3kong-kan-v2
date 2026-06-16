@@ -360,7 +360,7 @@ export function buildMatchups(players, hands) {
         b,
         ha,
         hb,
-        rowResults,
+        rows: rowResults,
         aWins,
         bWins,
         talu,
