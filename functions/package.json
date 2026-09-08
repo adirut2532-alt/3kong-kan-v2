@@ -8,7 +8,7 @@
     "firebase-functions": "^5.0.0"
   },
   "engines": {
-    "node": "18"
+    "node": "22"
   },
   "private": true
 }

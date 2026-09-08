@@ -1,34 +1,20 @@
-import React, { useState, useEffect } from 'react';
-import firebase from 'firebase/compat/app';
-import 'firebase/compat/firestore';
-
-// ── Firebase Client SDK Initialization ──
-const firebaseConfig = {
-  apiKey: "AIzaSyDUd1A3TyFBSSPGihdULbmnfTV6kvrOByY",
-  authDomain: "poker-kan.firebaseapp.com",
-  projectId: "poker-kan",
-  storageBucket: "poker-kan.firebasestorage.app",
-  messagingSenderId: "267226971967",
-  appId: "1:267226971967:web:3ae1891c63194a97715d8a"
-};
-
-if (!firebase.apps.length) {
-  firebase.initializeApp(firebaseConfig);
-}
-
-export const db = firebase.firestore();
-export { firebase };
+import React, { useState, lazy, Suspense } from 'react';
+import {auth} from './online.js';
+export {db, firebase} from './online.js';
 
 // Import core view components
-import Login from './components/Login.jsx';
-import Register from './components/Register.jsx';
-import Lobby from './components/Lobby.jsx';
-import GameRoom from './components/GameRoom';
-import AdminPanel from './components/AdminPanel.jsx';
-import PracticeRoom from './components/PracticeRoom.jsx';
+import HomeView from './components/lobby/HomeView.jsx';
+import {Brand} from './components/ui/GameUI.jsx';
+const Login=lazy(()=>import('./components/Login.jsx'));
+const Register=lazy(()=>import('./components/Register.jsx'));
+const Lobby=lazy(()=>import('./components/Lobby.jsx'));
+const GameRoom=lazy(()=>import('./components/GameRoom.jsx'));
+const AdminPanel=lazy(()=>import('./components/AdminPanel.jsx'));
+const PracticeRoom=lazy(()=>import('./components/PracticeRoom.jsx'));
 
 export default function App() {
-  const [screen, setScreen] = useState('login');
+  const [screen, setScreen] = useState('home');
+  const [loginTarget, setLoginTarget] = useState('lobby');
   const [player, setPlayer] = useState(null);
   const [memberId, setMemberId] = useState('');
   const [activeRoomId, setActiveRoomId] = useState('');
@@ -36,14 +22,15 @@ export default function App() {
   function handleLoginSuccess(playerObj, userMemberId) {
     setPlayer(playerObj);
     setMemberId(userMemberId);
-    setScreen('lobby');
+    setScreen(loginTarget);
   }
 
   function handleRegisterSuccess() {
     setScreen('login');
   }
 
-  function handleLogout() {
+  async function handleLogout() {
+    await auth.signOut();
     sessionStorage.clear();
     setPlayer(null);
     setMemberId('');
@@ -69,9 +56,11 @@ export default function App() {
   }
 
   return (
-    <div className="app-container">
+    <div className="app-container game-ui"><Suspense fallback={<div className="game-loading" role="status"><Brand/><span>กำลังเตรียมโต๊ะ…</span></div>}>
+      {screen === 'home' && <HomeView onStart={() => {setLoginTarget('lobby');setScreen('login');}} onPractice={() => {setLoginTarget('practice');setScreen('login');}}/>}
       {screen === 'login' && (
         <Login
+          onBack={() => setScreen('home')}
           onLoginSuccess={handleLoginSuccess}
           navigateToRegister={() => setScreen('register')}
           navigateToAdmin={() => setScreen('admin')}
@@ -116,6 +105,6 @@ export default function App() {
           onBack={() => setScreen('login')}
         />
       )}
-    </div>
+    </Suspense></div>
   );
 }

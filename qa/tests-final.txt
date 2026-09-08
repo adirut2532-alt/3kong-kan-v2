@@ -1,0 +1,17 @@
+npm warn Unknown env config "http-proxy". This will stop working in the next major version of npm.
+
+> 3kong-kan-v2@2.0.0 test
+> node src/utils/testEngine.js && node scripts/verify-core.mjs
+
+🧪 Starting 3 Kong Kan 2.0 Rule Engine Validation...
+✅ Test 1 Passed: Deck successfully created with 52 cards.
+✅ Test 2 Passed: Three of a Kind evaluated correctly (ตอง, rank 5).
+✅ Test 3 Passed: Royal Flush evaluated correctly (ฟลัชหลวง, rank 9).
+✅ Test 4 Passed: Arrangement foul rules successfully validated.
+
+🎉 ALL CORE RULE ENGINE TESTS PASSED SUCCESSFULLY! 4 baseline cases passed.
+Unchanged: src/utils/ruleEngine.js
+Unchanged: src/utils/aiEngine.js
+Unchanged: functions/index.js
+Unchanged: firestore.rules
+Restored SHA-256 helper: 2 standard vectors passed

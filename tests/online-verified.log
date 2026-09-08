@@ -1,0 +1,40 @@
+npm warn Unknown env config "http-proxy". This will stop working in the next major version of npm.
+
+> 3kong-kan-v2@2.0.0 test:online
+> firebase emulators:exec --project demo-3kong-online --only auth,firestore "node tests/online-emulator.mjs"
+
+⚠  emulators: You are not currently authenticated so some features may not work correctly. Please run firebase login to authenticate the CLI.
+i  emulators: Starting emulators: auth, firestore
+i  emulators: Detected demo project ID "demo-3kong-online", emulated services will use a demo configuration and attempts to access non-emulated services for this project will fail.
+i  firestore: Firestore Emulator logging to firestore-debug.log
+✔  firestore: Firestore Emulator UI websocket is running on 9150.
+i  Running script: node tests/online-emulator.mjs
+PASS Server registration/login; no public password hash; wrong password denied
+PASS Legacy account migrates credentials while preserving uid and chips
+PASS Legacy admin login works; unauthorized bootstrap denied
+PASS Unlimited room starts; non-host denied; duplicate start deals once
+[2026-09-08T10:47:39.047Z]  @firebase/firestore: Firestore (10.14.1): GrpcConnection RPC 'Write' stream 0x36873ce3 error. Code: 7 Message: 7 PERMISSION_DENIED: 
+false for 'update' @ L25
+[2026-09-08T10:47:39.060Z]  @firebase/firestore: Firestore (10.14.1): GrpcConnection RPC 'Write' stream 0x36873ce4 error. Code: 7 Message: 7 PERMISSION_DENIED: 
+false for 'update' @ L15
+[2026-09-08T10:47:39.072Z]  @firebase/firestore: Firestore (10.14.1): GrpcConnection RPC 'Write' stream 0x36873ce5 error. Code: 7 Message: 7 PERMISSION_DENIED: 
+false for 'create' @ L32, false for 'update' @ L32
+PASS Actual Firestore rules: room list works; private cards, credentials, balances and state protected
+[2026-09-08T10:47:39.228Z]  @firebase/firestore: Firestore (10.14.1): GrpcConnection RPC 'Write' stream 0x36873ce6 error. Code: 7 Message: 7 PERMISSION_DENIED: 
+evaluation error at L41:26 for 'create' @ L41, false for 'update' @ L48, false for 'create' @ L41
+PASS Chat identity and timestamp validated by rules
+PASS Reused username cannot revive an old session; valid signed member session accepted
+PASS Forged/wrong-length cards rejected; private submission and cancel work
+PASS Failed settlement rolls back ALL writes; retry/duplicate submit settles once; reveal after payout
+PASS Payout matches original engine and original commission formula
+PASS Round two works; stale round submission rejected
+PASS Four concurrent participants: 52 unique cards; all submit and settle once
+PASS Disconnected host lease transfers; former host cannot start next round
+PASS Suspended account denied by both rules and server
+ONLINE EMULATOR CHECKS PASSED: 14
+✔  Script exited successfully (code 0)
+i  emulators: Shutting down emulators.
+i  firestore: Stopping Firestore Emulator
+i  auth: Stopping Authentication Emulator
+i  hub: Stopping emulator hub
+i  logging: Stopping Logging Emulator

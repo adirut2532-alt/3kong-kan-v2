@@ -1,0 +1,76 @@
+/* Shared mobile arrangement composition. Existing card handlers and scoring remain untouched. */
+.game-ui :is(.practice-gameplay,.friends-gameplay) .arrangement-board {
+  padding: 10px 12px 0;
+  background: radial-gradient(ellipse at 50% 20%, #17462f55, transparent 75%), #0c2016;
+}
+.game-ui :is(.practice-gameplay,.friends-gameplay) .arrangement-heading { margin-bottom: 8px; }
+.game-ui :is(.practice-gameplay,.friends-gameplay) .arrangement-heading h2 { font-size: 21px; }
+.game-ui :is(.practice-gameplay,.friends-gameplay) .arrangement-scroll { flex: 1; padding: 6px 2px 8px; }
+.game-ui :is(.practice-gameplay,.friends-gameplay) .pile-stack { gap: 8px; }
+.game-ui :is(.practice-gameplay,.friends-gameplay) .pile-row { padding: 5px 8px 8px; border-color: #c7ae6952; }
+.game-ui :is(.practice-gameplay,.friends-gameplay) .pile-row__label { font-size: 13px; margin-bottom: 5px; }
+.game-ui :is(.practice-gameplay,.friends-gameplay) .pile-slots { gap: 6px; min-height: 76px; }
+.game-ui :is(.practice-gameplay,.friends-gameplay) .pile-slots .poker-card,
+.game-ui :is(.practice-gameplay,.friends-gameplay) .card-slot { height: 76px; max-height: 76px; }
+.game-ui :is(.practice-gameplay,.friends-gameplay) .pile-slots:not(:has(.poker-card)) { min-height: 44px; }
+.game-ui :is(.practice-gameplay,.friends-gameplay) .pile-slots:not(:has(.poker-card)) .card-slot { height: 44px; max-height: 44px; }
+.game-ui :is(.practice-gameplay,.friends-gameplay) .pile-slots .poker-card .card-num { font-size: 27px!important; }
+.game-ui :is(.practice-gameplay,.friends-gameplay) .pile-slots .card-center-pip { font-size: 35px; right: 8px; bottom: 5px; }
+.game-ui :is(.practice-gameplay,.friends-gameplay) .hand-tray-wrap { margin-top: 8px; }
+.game-ui :is(.practice-gameplay,.friends-gameplay) .tray-label { font-size: 12px; line-height: 18px; margin-bottom: 5px; }
+.game-ui :is(.practice-gameplay,.friends-gameplay) .hand-tray { grid-template-columns: repeat(7,minmax(0,1fr)); padding: 4px; gap: 4px; }
+.game-ui :is(.practice-gameplay,.friends-gameplay) .hand-tray .poker-card { height: 64px; max-height: 64px; }
+.game-ui :is(.practice-gameplay,.friends-gameplay) .hand-tray .card-num { font-size: 23px!important; }
+.game-ui :is(.practice-gameplay,.friends-gameplay) .hand-tray__empty { min-height: 22px; }
+.game-ui :is(.practice-gameplay,.friends-gameplay) .hand-tray:has(.hand-tray__empty) { min-height: 24px; background: transparent; border-color: transparent; box-shadow: none; }
+/* A quiet tool row and one gold CTA share a single fixed thumb dock. */
+.game-ui :is(.practice-gameplay,.friends-gameplay) .arrangement-tools {
+  margin: 0 -12px; padding: 6px 12px 4px; gap: 8px;
+  border-top: 1px solid #b69c6045; background: #0b1912;
+}
+.game-ui :is(.practice-gameplay,.friends-gameplay) .arrangement-tools > .game-button {
+  min-height: 44px; height: 44px; min-width: 44px;
+  background: transparent; border-color: #c0b48a24; box-shadow: none; color: #d3d9c9;
+}
+.game-ui :is(.practice-gameplay,.friends-gameplay) .arrangement-tools > .game-button:disabled { opacity: .4; }
+.game-ui :is(.practice-gameplay,.friends-gameplay) .arrangement-tools > .game-button--secondary { font-size: 13px; }
+.game-ui :is(.practice-gameplay,.friends-gameplay) .arrangement-confirm {
+  margin: 0 -12px; padding: 4px 12px calc(12px + env(safe-area-inset-bottom));
+  background: #0b1912; border-top: 0; box-shadow: none;
+}
+.game-ui :is(.practice-gameplay,.friends-gameplay) .arrangement-confirm .game-button { min-height: 54px; font-size: 17px; border-radius: 12px; }
+.game-ui :is(.practice-gameplay,.friends-gameplay) .game-button:focus-visible { outline: 2px solid #ffe0a0; outline-offset: 2px; }
+@media (max-width:699px) {
+  .game-ui :is(.practice-gameplay,.friends-gameplay) .game-header { padding-top: calc(6px + env(safe-area-inset-top)); padding-bottom: 6px; }
+  .game-ui :is(.practice-gameplay,.friends-gameplay) .game-table--compact { height: 140px; min-height: 140px; background-position: center 38%; background-size: 112% auto; }
+  .game-ui :is(.practice-gameplay,.friends-gameplay) .game-table--compact .player-seat { max-width: 126px; min-width: 0; }
+  .game-ui :is(.practice-gameplay,.friends-gameplay) .game-table--compact .player-seat .game-avatar { width: 30px; height: 30px; font-size: 20px; }
+  .game-ui :is(.practice-gameplay,.friends-gameplay) .game-table--compact .player-seat__plate { min-width: 72px; padding: 3px 5px; }
+  .game-ui :is(.practice-gameplay,.friends-gameplay) .game-table--compact .player-seat strong,
+  .game-ui :is(.practice-gameplay,.friends-gameplay) .game-table--compact .player-seat__chips { font-size: 11px; line-height: 14px; }
+  .game-ui :is(.practice-gameplay,.friends-gameplay) .game-table--compact .player-seat .game-badge { font-size: 9px; line-height: 12px; padding: 1px 4px; }
+  .game-ui :is(.practice-gameplay,.friends-gameplay) .game-table--compact .player-seat--top,
+  .game-ui :is(.practice-gameplay,.friends-gameplay) .game-table--compact .player-seat--bottom { display: grid; grid-template-columns: 32px auto; gap: 0 5px; left: 50%; transform: translateX(-50%); }
+  .game-ui :is(.practice-gameplay,.friends-gameplay) .game-table--compact .player-seat--top { top: 6px; }
+  .game-ui :is(.practice-gameplay,.friends-gameplay) .game-table--compact .player-seat--bottom { top: auto; bottom: 5px; }
+  .game-ui :is(.practice-gameplay,.friends-gameplay) .player-seat--top .player-seat__portrait,
+  .game-ui :is(.practice-gameplay,.friends-gameplay) .player-seat--bottom .player-seat__portrait { grid-row: 1 / 3; }
+  .game-ui :is(.practice-gameplay,.friends-gameplay) .player-seat--top .player-seat__plate,
+  .game-ui :is(.practice-gameplay,.friends-gameplay) .player-seat--bottom .player-seat__plate { margin-top: 0; padding: 1px 5px; }
+  .game-ui :is(.practice-gameplay,.friends-gameplay) .player-seat--top .game-badge,
+  .game-ui :is(.practice-gameplay,.friends-gameplay) .player-seat--bottom .game-badge { grid-column: 2; justify-self: center; }
+  .game-ui :is(.practice-gameplay,.friends-gameplay) .game-table--compact .player-seat--left { top: 50%; left: 16px; transform: translateY(-50%); }
+  .game-ui :is(.practice-gameplay,.friends-gameplay) .game-table--compact .player-seat--right { top: 50%; right: 16px; transform: translateY(-50%); }
+  .game-ui :is(.practice-gameplay,.friends-gameplay) .game-table--compact .game-table__center { display: flex; top: 50%; bottom: auto; transform: translate(-50%,-50%); }
+  .game-ui :is(.practice-gameplay,.friends-gameplay) .game-table--compact .game-table__center .brand { display: block; font-size: 25px; opacity: .32; }
+}
+@media (max-width:350px) {
+  .game-ui :is(.practice-gameplay,.friends-gameplay) .hand-tray { grid-template-columns: repeat(5,minmax(0,1fr)); }
+  .game-ui :is(.practice-gameplay,.friends-gameplay) .arrangement-tools { gap: 5px; }
+  .game-ui :is(.practice-gameplay,.friends-gameplay) .arrangement-tools > .game-button--secondary { font-size: 11px; padding: 6px 4px; }
+}
+@media (max-height:650px) and (orientation:portrait) {
+  .game-ui :is(.practice-gameplay,.friends-gameplay) .game-table--compact { height: 104px; min-height: 104px; }
+  .game-ui :is(.practice-gameplay,.friends-gameplay) .game-table--compact .player-seat__chips { display: none; }
+  .game-ui :is(.practice-gameplay,.friends-gameplay) .arrangement-heading h2 { font-size: 18px; }
+}

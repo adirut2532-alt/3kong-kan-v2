@@ -1,16 +1,14 @@
 import React, { useState, useEffect } from 'react';
 import { db } from '../App.jsx';
-import firebase from 'firebase/compat/app';
-import { ShieldCheck, Plus, Trash2, Edit2, ShieldAlert, KeyRound, LogOut, ArrowLeft, BarChart3, RefreshCw } from 'lucide-react';
-import { sha256 } from '../utils/sha256.js';
+import { ShieldCheck, Plus, Trash2, LogOut, ArrowLeft, BarChart3, RefreshCw } from 'lucide-react';
+import {auth, call, signIn} from '../online.js';
 
 const RATES = [1, 5, 10, 15, 20, 30, 50];
 const COMMS = [0, 0.25, 0.5, 0.75, 1, 1.5, 1.75, 2];
 
 export default function AdminPanel({ onBack }) {
-  const [isAdminLoggedIn, setIsAdminLoggedIn] = useState(() => {
-    return sessionStorage.getItem('admin_logged_in') === 'true';
-  });
+  const [isAdminLoggedIn,setIsAdminLoggedIn]=useState(false);
+  const [setupToken,setSetupToken]=useState('');
   const [adminPass, setAdminPass] = useState('');
   const [error, setError] = useState('');
   const [setupMode, setSetupMode] = useState(false);
@@ -48,17 +46,10 @@ export default function AdminPanel({ onBack }) {
   const [expandedRound, setExpandedRound] = useState(null);
 
 
-  // Check if admin config exists on mount
-  useEffect(() => {
-    db.collection('admin').doc('config').get().then(async snap => {
-      if (!snap.exists) {
-        const legacySnap = await db.collection('config').doc('admin').get().catch(() => ({ exists: false }));
-        if (!legacySnap.exists) {
-          setSetupMode(true);
-        }
-      }
-    });
-  }, []);
+  useEffect(()=>{
+    call('account',{action:'adminStatus'}).then(r=>setSetupMode(r.setup)).catch(e=>setError(e.message));
+    return auth.onAuthStateChanged(async user=>{setIsAdminLoggedIn(!!user&&(await user.getIdTokenResult()).claims.admin===true);});
+  },[]);
 
   // Fetch data if logged in
   useEffect(() => {
@@ -72,8 +63,8 @@ export default function AdminPanel({ onBack }) {
   async function handleSetup(e) {
     e.preventDefault();
     setError('');
-    if (newPass1.length < 4) {
-      setError('รหัสต้องมีอย่างน้อย 4 ตัวอักษรขึ้นไปครับ');
+    if (newPass1.length < 8) {
+      setError('รหัสต้องมีอย่างน้อย 8 ตัวอักษรขึ้นไปครับ');
       return;
     }
     if (newPass1 !== newPass2) {
@@ -82,14 +73,10 @@ export default function AdminPanel({ onBack }) {
     }
 
     try {
-      const hash = await sha256(newPass1);
-      const payload = { passwordHash: hash, updatedAt: Date.now() };
-      await db.collection('admin').doc('config').set(payload);
-      sessionStorage.setItem('admin_logged_in', 'true');
-      setIsAdminLoggedIn(true);
-      setSetupMode(false);
+      await signIn({action:'adminSetup',password:newPass1,setupToken});
+      setIsAdminLoggedIn(true);setSetupMode(false);
     } catch (e) {
-      setError('บันทึกรหัสผ่านล้มเหลว กรุณาลองใหม่');
+      setError(e.message||'บันทึกรหัสผ่านล้มเหลว กรุณาลองใหม่');
     }
   }
 
@@ -97,23 +84,10 @@ export default function AdminPanel({ onBack }) {
     e.preventDefault();
     setError('');
     try {
-      const hash = await sha256(adminPass);
-      let snap = await db.collection('admin').doc('config').get();
-      
-      // Fallback to legacy path if admin/config does not exist
-      if (!snap.exists) {
-        snap = await db.collection('config').doc('admin').get().catch(() => ({ exists: false, data: () => ({}) }));
-      }
-      
-      if (!snap.exists || snap.data().passwordHash !== hash) {
-        setError('รหัสผ่านแอดมินไม่ถูกต้องครับ');
-        return;
-      }
-
-      sessionStorage.setItem('admin_logged_in', 'true');
+      await signIn({action:'adminLogin',password:adminPass});
       setIsAdminLoggedIn(true);
     } catch (e) {
-      setError('เชื่อมต่อระบบความปลอดภัยล้มเหลว');
+      setError(e.message||'เชื่อมต่อระบบความปลอดภัยล้มเหลว');
     }
   }
 
@@ -124,7 +98,7 @@ export default function AdminPanel({ onBack }) {
       const list = [];
       snap.forEach(d => list.push({ id: d.id, ...d.data() }));
       setMembers(list);
-    } catch (e) {}
+    } catch (e) {setError(e.message||'โหลดข้อมูลไม่สำเร็จ');}
   }
 
   async function loadRooms() {
@@ -132,7 +106,7 @@ export default function AdminPanel({ onBack }) {
       const snap = await db.collection('admin').doc('data').get();
       const list = (snap.exists ? snap.data().rooms : []).filter(r => r.code) || [];
       setRooms(list);
-    } catch (e) {}
+    } catch (e) {setError(e.message||'โหลดข้อมูลไม่สำเร็จ');}
   }
 
   async function loadRoomSummaries() {
@@ -147,7 +121,8 @@ export default function AdminPanel({ onBack }) {
           const roomSnap = await db.collection('rooms').doc(brief.code).get();
           if (roomSnap.exists) {
             const rd = roomSnap.data();
-            const roundHistory = rd.roundHistory || [];
+            const rounds=await db.collection('rooms').doc(brief.code).collection('rounds').get();
+            const roundHistory=rounds.empty?(rd.roundHistory||[]):rounds.docs.map(s=>s.data());
             const roundsPlayed = rd.round || roundHistory.length || 0;
             const rate = rd.rate || brief.rate || 1;
             const commissionPercent = rd.commission != null ? rd.commission : (brief.commission || 0);
@@ -216,6 +191,7 @@ export default function AdminPanel({ onBack }) {
         round: 0,
         scores: {},
         createdAt: Date.now(),
+        onlineVersion: 1,
         createdByAdmin: true
       };
 
@@ -267,12 +243,15 @@ export default function AdminPanel({ onBack }) {
     if (!confirm(`ยืนยันเตะผู้เล่น "${playerName}" ออกจากห้อง #${roomCode}?`)) return;
     try {
       const roomRef = db.collection('rooms').doc(roomCode);
-      const updates = {};
-      updates[`players.${playerId}`] = firebase.firestore.FieldValue.delete();
-      updates[`deals.${playerId}`] = firebase.firestore.FieldValue.delete();
-      updates[`hands.${playerId}`] = firebase.firestore.FieldValue.delete();
-      await roomRef.update(updates);
-      
+      await db.runTransaction(async tx=>{
+        const snap=await tx.get(roomRef);if(!snap.exists)throw new Error('ไม่พบห้อง');
+        const d=snap.data();if(d.status==='playing')throw new Error('กรุณารอจบรอบก่อนนำผู้เล่นออก');
+        const players={...d.players},deals={...d.deals},hands={...d.hands};
+        const wasHost=players[playerId]?.isHost;
+        delete players[playerId];delete deals[playerId];delete hands[playerId];
+        if(wasHost){const next=Object.keys(players).find(id=>!players[id].isSpectator&&!players[id].isQueue);if(next)players[next]={...players[next],isHost:true};}
+        tx.update(roomRef,{players,deals,hands});
+      });
       alert(`เตะผู้เล่น "${playerName}" ออกจากห้องเรียบร้อย`);
       loadRoomSummaries();
     } catch (e) {
@@ -289,21 +268,13 @@ export default function AdminPanel({ onBack }) {
 
     if (!confirm(`ยืนยันการเซ็ตชิปของ "${name}" ให้เหลือ 0?\n(ยอดปัจจุบันคือ ${cur.toFixed(1)} ชิป)`)) return;
 
-    const now = Date.now();
-    const amt = Math.abs(cur);
-    const newBal = 0;
-    const transactionType = cur > 0 ? 'withdraw' : 'deposit';
-    const note = cur > 0 ? 'เซ็ตชิปเป็น 0' : 'เซ็ตชิปเป็น 0 (ล้างยอดติดลบ)';
-
     try {
-      const snap = await db.collection('members').doc(memberId).get();
-      const existingTxns = (snap.exists && snap.data().txns) || [];
-      const txRecord = { t: now, ty: transactionType, amt, bal: newBal, note };
-      const updatedTxns = [...existingTxns, txRecord].slice(-30);
-
-      await db.collection('members').doc(memberId).update({
-        chips: newBal,
-        txns: updatedTxns
+      const ref=db.collection('members').doc(memberId);
+      await db.runTransaction(async tx=>{
+        const snap=await tx.get(ref);if(!snap.exists)throw new Error('ไม่พบบัญชี');
+        const d=snap.data(),latest=d.chips||0;
+        const record={t:Date.now(),ty:latest>0?'withdraw':'deposit',amt:Math.abs(latest),bal:0,note:latest>0?'เซ็ตชิปเป็น 0':'เซ็ตชิปเป็น 0 (ล้างยอดติดลบ)'};
+        tx.update(ref,{chips:0,txns:[...(d.txns||[]),record].slice(-30)});
       });
       alert(`เซ็ตชิปของ "${name}" ให้เหลือ 0 เรียบร้อยแล้ว`);
       loadMembers();
@@ -312,7 +283,7 @@ export default function AdminPanel({ onBack }) {
     }
   }
 
-  async function handleApproveMember(memberId, name) {
+  async function handleApproveMember(memberId) {
     try {
       await db.collection('members').doc(memberId).update({ approved: true });
       loadMembers();
@@ -325,7 +296,7 @@ export default function AdminPanel({ onBack }) {
     try {
       await db.collection('members').doc(memberId).update({ active: !currentActive });
       loadMembers();
-    } catch (e) {}
+    } catch (e) {setError(e.message||'โหลดข้อมูลไม่สำเร็จ');}
   }
 
   async function handleDeleteMember(memberId, name) {
@@ -333,7 +304,7 @@ export default function AdminPanel({ onBack }) {
     try {
       await db.collection('members').doc(memberId).delete();
       loadMembers();
-    } catch (e) {}
+    } catch (e) {setError(e.message||'โหลดข้อมูลไม่สำเร็จ');}
   }
 
   async function handleResetAllProfit() {
@@ -355,37 +326,22 @@ export default function AdminPanel({ onBack }) {
   async function handleResetAllChipsToZero() {
     if (!confirm('⚠️ ยืนยันที่จะเซ็ตชิปของผู้เล่นทุกคนให้เป็น 0 หรือไม่?\n(การดำเนินการนี้จะเคลียร์ยอดชิปทั้งหมด และไม่สามารถย้อนกลับได้)')) return;
     try {
-      const snap = await db.collection('members').get();
-      const batch = db.batch();
-      const now = Date.now();
-      
-      let count = 0;
-      snap.forEach(docSnap => {
-        const data = docSnap.data();
-        const cur = data.chips || 0;
-        if (cur !== 0) {
-          const amt = Math.abs(cur);
-          const transactionType = cur > 0 ? 'withdraw' : 'deposit';
-          const note = cur > 0 ? 'เซ็ตชิปเป็น 0 (ล้างชิปทั้งหมด)' : 'เซ็ตชิปเป็น 0 (ล้างชิปทั้งหมด - ยอดติดลบ)';
-          const txRecord = { t: now, ty: transactionType, amt, bal: 0, note };
-          
-          const existingTxns = data.txns || [];
-          const updatedTxns = [...existingTxns, txRecord].slice(-30);
-
-          batch.update(docSnap.ref, {
-            chips: 0,
-            txns: updatedTxns
-          });
-          count++;
-        }
-      });
-
-      if (count > 0) {
-        await batch.commit();
-        alert(`✨ เซ็ตชิปของผู้เล่น ${count} คนให้เป็น 0 เรียบร้อยแล้วครับ`);
-      } else {
-        alert('ผู้เล่นทุกคนมีชิปเป็น 0 อยู่แล้วครับ');
+      const snap=await db.collection('members').get();
+      let count=0;
+      for(let offset=0;offset<snap.docs.length;offset+=400){
+        const refs=snap.docs.slice(offset,offset+400).map(d=>d.ref);
+        count+=await db.runTransaction(async tx=>{
+          const rows=await Promise.all(refs.map(ref=>tx.get(ref)));
+          let changed=0;
+          rows.forEach((row,i)=>{
+            if(!row.exists)return;
+            const d=row.data(),cur=d.chips||0;if(cur===0)return;
+            const record={t:Date.now(),ty:cur>0?'withdraw':'deposit',amt:Math.abs(cur),bal:0,note:'เซ็ตชิปเป็น 0 (ล้างชิปทั้งหมด)'};
+            tx.update(refs[i],{chips:0,txns:[...(d.txns||[]),record].slice(-30)});changed++;
+          });return changed;
+        });
       }
+      alert(`เซ็ตชิปของผู้เล่น ${count} คนให้เป็น 0 เรียบร้อยแล้ว`);
       loadMembers();
     } catch (e) {
       alert('เซ็ตชิปทั้งหมดเป็น 0 ล้มเหลว: ' + e.message);
@@ -408,39 +364,22 @@ export default function AdminPanel({ onBack }) {
       return;
     }
 
-    const cur = chipsTarget.chips || 0;
-    const now = Date.now();
-    let newBal = cur;
-    let transactionType = '';
-
-    if (op === 'deposit') {
-      newBal = cur + amt;
-      transactionType = 'deposit';
-    } else if (op === 'withdraw') {
-      if (amt > cur) {
-        alert('จำนวนชิปที่ถอน เกินชิปคงเหลือจริง!');
-        return;
-      }
-      newBal = cur - amt;
-      transactionType = 'withdraw';
-    }
-
     try {
-      const snap = await db.collection('members').doc(chipsTarget.id).get();
-      const existingTxns = (snap.exists && snap.data().txns) || [];
-      const txRecord = { t: now, ty: transactionType, amt, bal: newBal, note: chipsNote.trim() };
-      const updatedTxns = [...existingTxns, txRecord].slice(-30);
-
-      await db.collection('members').doc(chipsTarget.id).update({
-        chips: newBal,
-        approved: true,
-        txns: updatedTxns
+      const ref=db.collection('members').doc(chipsTarget.id);
+      await db.runTransaction(async tx=>{
+        const snap=await tx.get(ref);
+        if(!snap.exists)throw new Error('ไม่พบบัญชี');
+        const d=snap.data(),cur=d.chips||0;
+        if(op==='withdraw'&&amt>cur)throw new Error('ยอดชิปคงเหลือไม่พอถอน');
+        const bal=Math.round((cur+(op==='deposit'?amt:-amt))*100)/100;
+        const record={t:Date.now(),ty:op,amt,bal,note:chipsNote.trim()};
+        tx.update(ref,{chips:bal,approved:true,txns:[...(d.txns||[]),record].slice(-30)});
       });
 
       setShowChipsModal(false);
       loadMembers();
     } catch (e) {
-      alert('บันทึกยอดชิปล้มเหลว');
+      alert(e.message||'บันทึกยอดชิปล้มเหลว');
     }
   }
 
@@ -455,7 +394,7 @@ export default function AdminPanel({ onBack }) {
         const sorted = (snap.data().txns || []).sort((a, b) => b.t - a.t);
         setHistoryLogs(sorted);
       }
-    } catch (e) {}
+    } catch (e) {setError(e.message||'โหลดข้อมูลไม่สำเร็จ');}
   }
 
   async function handleViewRoomHistory(roomCode, rate, commission) {
@@ -468,7 +407,8 @@ export default function AdminPanel({ onBack }) {
       const roomSnap = await db.collection('rooms').doc(roomCode).get();
       if (roomSnap.exists) {
         const data = roomSnap.data();
-        const history = data.roundHistory || [];
+        const rounds=await db.collection('rooms').doc(roomCode).collection('rounds').get();
+        const history=rounds.empty?(data.roundHistory||[]):rounds.docs.map(s=>s.data());
         // Sort rounds descending (newest first)
         const sortedHistory = [...history].sort((a, b) => b.round - a.round);
         setSelectedRoomHistory(sortedHistory);
@@ -498,7 +438,7 @@ export default function AdminPanel({ onBack }) {
           </div>
 
           {setupMode ? (
-            <form onSubmit={handleSetup}>
+            <form onSubmit={handleSetup}><label>รหัสติดตั้งระบบ<input className="form-input" type="password" value={setupToken} onChange={e=>setSetupToken(e.target.value)}/></label>
               <p style={{ textAlign: 'center', fontSize: '12px', color: 'var(--text-muted)', marginBottom: '14px' }}>
                 🎉 ระบบตรวจพบว่าแอดมินยังไม่ได้ตั้งรหัสผ่าน ตั้งรหัสผ่านหลักได้ที่นี่ครับ
               </p>
@@ -567,10 +507,12 @@ export default function AdminPanel({ onBack }) {
           <h2 style={{ fontSize: '18px', fontWeight: '900', color: 'var(--primary)' }}>แผงจัดการผู้ดูแลห้อง</h2>
           <span style={{ fontSize: '10px', color: 'var(--text-muted)' }}>จัดการข้อมูลชิป สมาชิก และห้องเล่นเกม</span>
         </div>
-        <button className="btn-secondary" style={{ padding: '6px 12px', fontSize: '12px' }} onClick={() => { setIsAdminLoggedIn(false); sessionStorage.removeItem('admin_logged_in'); }}>
+        <button className="btn-secondary" style={{ padding: '6px 12px', fontSize: '12px' }} onClick={async () => { await auth.signOut(); setIsAdminLoggedIn(false); }}>
           <LogOut size={12} /> ล็อกเอาต์
         </button>
       </div>
+
+      {error && <div className="error-banner" role="alert">{error}</div>}
 
       {/* STATS */}
       <div style={{ display: 'flex', gap: '8px', marginBottom: '14px' }}>
