@@ -1,0 +1,50 @@
+name: Firebase deployment preflight
+on:
+  pull_request:
+    branches: [main]
+    paths: ['.github/workflows/firebase-preflight.yml']
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  preflight:
+    if: github.event_name == 'workflow_dispatch' || github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: 654eb92eef50a04861c231fd4fbb4f869b535f9f
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - run: npm ci --prefix functions
+      - name: Read-only Firebase access and migration preflight
+        env:
+          FIREBASE_SERVICE_ACCOUNT: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
+        run: |
+          node <<'NODE'
+          const admin = require('./functions/node_modules/firebase-admin');
+          (async () => {
+            if (!process.env.FIREBASE_SERVICE_ACCOUNT) throw Error('FIREBASE_SERVICE_ACCOUNT secret is not configured');
+            let key;
+            try { key = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT); }
+            catch { throw Error('Firebase service account secret is not valid JSON'); }
+            if (key.project_id !== 'poker-kan') throw Error('Firebase credential project mismatch; no request sent');
+            const app = admin.initializeApp({credential: admin.credential.cert(key), projectId: 'poker-kan'});
+            try {
+              const rooms = await admin.firestore().collection('rooms').get();
+              const summary = {
+                project: 'poker-kan',
+                rooms: rooms.size,
+                playing: rooms.docs.filter(d => d.data().status === 'playing').length,
+                legacy: rooms.docs.filter(d => d.data().onlineVersion !== 1).length
+              };
+              console.log(JSON.stringify(summary));
+              await admin.auth().listUsers(1);
+              console.log('PASS: Firestore and Firebase Auth read access. No data modified.');
+              if (summary.playing || summary.legacy) throw Error('Maintenance and verified backup/migration required before production deployment');
+            } finally { await app.delete(); }
+          })().catch(e => { console.error('Preflight blocked:', e.code || (e.message.startsWith('FIREBASE_') || e.message.startsWith('Firebase ') || e.message.startsWith('Maintenance ') ? e.message : 'Firebase access could not be verified')); process.exitCode = 1; });
+          NODE
