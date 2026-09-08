@@ -1,0 +1,109 @@
+name: Deploy approved game restart
+on:
+  pull_request:
+    branches: [main]
+    paths: ['.github/workflows/deploy-restart.yml']
+permissions:
+  contents: read
+concurrency:
+  group: poker-kan-production
+  cancel-in-progress: false
+jobs:
+  deploy:
+    if: github.event.pull_request.head.repo.full_name == github.repository && github.head_ref == 'codex/premium-online-verified'
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    env:
+      GCLOUD_PROJECT: poker-kan
+      GOOGLE_APPLICATION_CREDENTIALS: ${{ runner.temp }}/firebase-deploy.json
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: 654eb92eef50a04861c231fd4fbb4f869b535f9f
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - run: npm ci
+      - run: npm ci --prefix functions
+      - run: npm test && npm run lint && npm run build
+      - name: Configure existing deployment credential
+        env:
+          DEPLOY_CREDENTIAL: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
+        run: |
+          node <<'NODE'
+          const fs = require('fs');
+          const key = JSON.parse(process.env.DEPLOY_CREDENTIAL || '{}');
+          if (key.project_id !== 'poker-kan') throw Error('Missing credential or wrong project');
+          fs.writeFileSync(process.env.GOOGLE_APPLICATION_CREDENTIALS, JSON.stringify(key), {mode: 0o600});
+          NODE
+      - name: Deploy new authenticated backend
+        run: npx firebase deploy --project poker-kan --only functions:account,functions:gameAction,functions:leaderboard --non-interactive
+      - name: Retire obsolete game endpoints
+        run: |
+          npx firebase functions:list --project poker-kan --json > "$RUNNER_TEMP/functions-list.json"
+          node <<'NODE'
+          const fs=require('fs'), cp=require('child_process');
+          const result=JSON.parse(fs.readFileSync(process.env.RUNNER_TEMP+'/functions-list.json','utf8'));
+          if(result.status!=='success' || !Array.isArray(result.result)) throw Error('Cannot verify deployed function inventory');
+          for(const f of result.result){
+            const id=f.id || f.name?.split('/').pop();
+            if(['dealCards','submitPlayerHand','settleRound'].includes(id)){
+              if(!f.region) throw Error('Missing region for obsolete endpoint');
+              cp.execFileSync('./node_modules/.bin/firebase',['functions:delete',id,'--region',f.region,'--project','poker-kan','--force','--non-interactive'],{stdio:'inherit'});
+            }
+          }
+          NODE
+      - name: Protect private game data with current rules
+        run: npx firebase deploy --project poker-kan --only firestore:rules --non-interactive
+      - name: Archive abandoned rooms and open fresh empty tables
+        run: |
+          node <<'NODE'
+          const admin=require('./functions/node_modules/firebase-admin');
+          const crypto=require('crypto');
+          admin.initializeApp({projectId:'poker-kan'});
+          (async()=>{
+            const db=admin.firestore();
+            const rooms=await db.collection('rooms').get();
+            const legacy=rooms.docs.filter(d=>d.data().onlineVersion!==1);
+            if(legacy.length>6) throw Error('More legacy rooms than approved; manual review required');
+            let archived=0;
+            for(const old of legacy){
+              const key=crypto.createHash('sha256').update(old.id).digest('hex');
+              const backup=db.doc('_deploymentBackups/restart-20260908/rooms/'+key);
+              const fresh=db.doc('rooms/N'+key.slice(0,8).toUpperCase());
+              await db.runTransaction(async tx=>{
+                const [current,saved,next]=await Promise.all([tx.get(old.ref),tx.get(backup),tx.get(fresh)]);
+                if(!current.exists || current.data().onlineVersion===1)return;
+                if(saved.exists)return;
+                if(next.exists)throw Error('Fresh table ID already exists');
+                const d=current.data();
+                tx.create(backup,{sourceRoom:old.id,original:d,archivedAt:Date.now(),reason:'Owner approved closing abandoned rooms and starting fresh'});
+                // The original document and every subcollection remain for recovery.
+                tx.update(old.ref,{status:'closed',archivedAt:Date.now(),archivedBy:'approved-restart-20260908'});
+                tx.create(fresh,{name:d.name||'ห้องเล่นกับเพื่อน',rate:d.rate??1,commission:d.commission??0,maxRounds:d.maxRounds??0,status:'lobby',players:{},round:0,scores:{},hands:{},deals:{},createdAt:Date.now(),onlineVersion:1,createdByAdmin:true});
+              });
+              archived++;
+            }
+            console.log('Legacy rooms archived with private snapshots; fresh empty tables:',archived);
+            console.log('Member accounts, balances and all room subcollections preserved. No pending round was paid or rescored.');
+          })().catch(e=>{console.error(e.code||e.message);process.exitCode=1;}).finally(()=>admin.app().delete());
+          NODE
+      - name: Publish game
+        run: npx firebase deploy --project poker-kan --only hosting --non-interactive
+      - name: Verify hosted app and callable availability
+        run: |
+          node <<'NODE'
+          (async()=>{
+            const home=await fetch('https://poker-kan.web.app/');
+            const html=await home.text();
+            if(!home.ok || !html.includes('/assets/'))throw Error('Hosted app verification failed');
+            const api=await fetch('https://us-central1-poker-kan.cloudfunctions.net/account',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({data:{action:'adminStatus'}})});
+            const data=await api.json();
+            if(!api.ok || !data.result || typeof data.result.setup!=='boolean')throw Error('Callable verification failed');
+            console.log('Verified game URL: https://poker-kan.web.app/');
+          })().catch(e=>{console.error(e.message);process.exitCode=1});
+          NODE
+      - name: Remove temporary deployment credential
+        if: always()
+        run: rm -f "$GOOGLE_APPLICATION_CREDENTIALS"
