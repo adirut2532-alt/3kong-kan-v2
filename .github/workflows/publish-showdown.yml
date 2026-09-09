@@ -1,0 +1,53 @@
+name: Publish four-player showdown
+on:
+  push:
+    branches: [codex/four-player-showdown]
+    paths: ['.github/workflows/publish-showdown.yml']
+permissions:
+  contents: read
+concurrency:
+  group: poker-kan-production
+  cancel-in-progress: false
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: 104542651f418bb44612ff939cd060f8718e99f6
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: npm ci
+      - run: npm test && npm run lint && npm run build
+      - name: Publish verified frontend
+        env:
+          DEPLOY_CREDENTIAL: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
+          GOOGLE_APPLICATION_CREDENTIALS: /tmp/3kong-showdown-deploy.json
+        run: |
+          node <<'NODE'
+          const fs=require('node:fs');
+          const key=JSON.parse(process.env.DEPLOY_CREDENTIAL||'{}');
+          if(key.project_id!=='poker-kan')throw Error('Wrong deployment project');
+          fs.writeFileSync(process.env.GOOGLE_APPLICATION_CREDENTIALS,JSON.stringify(key),{mode:0o600});
+          NODE
+          npx firebase deploy --project poker-kan --only hosting --non-interactive
+      - name: Verify published version
+        run: |
+          node <<'NODE'
+          const fs=require('node:fs');
+          (async()=>{
+            const r=await fetch('https://poker-kan.web.app/');
+            const html=await r.text();
+            const local=fs.readFileSync('dist/index.html','utf8');
+            const script=local.match(/src="([^"]+\.js)"/)?.[1];
+            if(!r.ok||!script||!html.includes(script))throw Error('Published version mismatch');
+            const asset=await fetch(new URL(script,'https://poker-kan.web.app/'));
+            if(!asset.ok)throw Error('Published bundle unavailable');
+            console.log('Verified four-player showdown frontend: https://poker-kan.web.app/');
+          })().catch(e=>{console.error(e.message);process.exitCode=1});
+          NODE
+      - name: Remove temporary credential
+        if: always()
+        run: rm -f /tmp/3kong-showdown-deploy.json
