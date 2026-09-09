@@ -11,3 +11,21 @@
 @media(max-width:480px){.game-ui .showdown-dialog{border-radius:0;border:0;height:100dvh}}
 @media(max-height:700px){.showdown-stage{padding-top:8px}.showdown-side{padding:8px;margin-bottom:8px}.showdown-person{margin-bottom:8px}.showdown-person .game-avatar{width:28px;height:28px;font-size:19px}.showdown-card{height:70px}.showdown-hand-name{margin-top:6px}.showdown-pile-title{font-size:20px;margin-bottom:8px}.showdown-header{padding-top:8px}.showdown-progress{padding-top:8px;padding-bottom:8px}}
 @media(prefers-reduced-motion:reduce){.showdown-card__turn,.showdown-side{transition:none}}
+.showdown-four-stage{padding:6px 12px;overscroll-behavior:contain}
+.showdown-all-players{display:grid;gap:8px;perspective:1100px}
+.showdown-seat{margin:0;padding:8px 10px;border-radius:13px;background:linear-gradient(115deg,#133d2eee,#081e17f5);box-shadow:0 5px 10px #0005,inset 0 1px #e8d6a51c;border-color:#a8986040}
+.showdown-seat .showdown-person{margin:0 0 5px;gap:7px}
+.showdown-seat .showdown-person .game-avatar{width:28px;height:28px;font-size:19px;flex-shrink:0}
+.showdown-seat .showdown-person strong{font-size:14px;flex:1}
+.showdown-total{text-align:right;flex-shrink:0;font-variant-numeric:tabular-nums;line-height:1.15}
+.showdown-total b{font-size:23px;font-weight:800;display:block;text-shadow:0 2px 8px #0008}
+.showdown-total small{display:block;font-size:9px;color:#b4c3b8;margin-top:2px}
+.showdown-total.positive{color:#71efac}.showdown-total.negative{color:#ff8394}.showdown-total.neutral{color:#e5d9bc}
+.showdown-seat .showdown-cards{gap:6px;transform:rotateX(5deg);transform-origin:center bottom}
+.showdown-seat .showdown-card{height:66px;flex-basis:47px}
+.showdown-seat .showdown-card__face b{font-size:25px}.showdown-seat .showdown-card__face>span{font-size:27px}
+.showdown-row-result{display:flex;justify-content:space-between;gap:6px;margin-top:6px;font-size:10px;color:#d8e4d8;min-height:15px}
+.showdown-row-result>span:last-child{color:#b8c6b8;white-space:nowrap}
+@media(min-width:700px){.game-ui .showdown-dialog{width:720px}.showdown-all-players{grid-template-columns:repeat(2,minmax(0,1fr))}.showdown-seat{padding:18px 12px}.showdown-seat .showdown-card{height:86px;flex-basis:58px}.showdown-row-result{margin-top:14px}}
+@media(max-width:360px){.showdown-seat .showdown-card{height:58px;flex-basis:42px}.showdown-row-result{font-size:9px}.showdown-seat{padding:6px 8px}.showdown-total b{font-size:21px}}
+@media(prefers-reduced-motion:reduce){.showdown-seat .showdown-cards{transform:none}}
