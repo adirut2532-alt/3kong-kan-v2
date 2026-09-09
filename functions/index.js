@@ -1,4 +1,6 @@
 const functions = require('firebase-functions');
+// Explicitly use this project's existing runtime identity instead of the absent Compute default.
+const runtime = functions.runWith({serviceAccount:'poker-kan@appspot.gserviceaccount.com'});
 const admin = require('firebase-admin');
 const crypto = require('node:crypto');
 const {promisify} = require('node:util');
@@ -29,7 +31,7 @@ async function throttle(context,key) {
   });
 }
 const safePlayer = d=>({name:d.name,avatar:d.avatar||'🎴',chips:d.chips||0});
-exports.account = functions.https.onCall(async(data,context)=>{
+exports.account = runtime.https.onCall(async(data,context)=>{
   const action=data?.action;
   if(action==='adminStatus') {
     const [a,b]=await Promise.all([db.doc('admin/config').get(),db.doc('config/admin').get()]);
@@ -103,12 +105,12 @@ async function requireMember(context) {
   if(!member.exists||member.data().active===false||!member.data().sessionKey||member.data().sessionKey!==context.auth.token?.memberKey)error('permission-denied','เซสชันหมดอายุ กรุณาเข้าสู่ระบบใหม่');
   return member;
 }
-exports.gameAction = functions.https.onCall(async(data,context)=>{
+exports.gameAction = runtime.https.onCall(async(data,context)=>{
   await requireMember(context);
   try{return await (await service)(data||{},context.auth?.uid,context.auth?.token?.memberKey);}
   catch(e){if(e.code && ['invalid-argument','failed-precondition','unauthenticated','permission-denied','aborted','not-found','data-loss'].includes(e.code)) error(e.code,e.message);throw e;}
 });
-exports.leaderboard = functions.https.onCall(async(data,context)=>{
+exports.leaderboard = runtime.https.onCall(async(data,context)=>{
   await requireMember(context);
   const snap=await db.collection('members').orderBy('totalProfit','desc').limit(8).get();
   return snap.docs.map(s=>{const d=s.data();return {id:s.id,...safePlayer(d),totalProfit:d.totalProfit||0,level:d.level||1};});
