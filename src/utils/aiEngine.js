@@ -1,13 +1,6 @@
 import { evalHand, bonus, validArr, isDragonHand } from './ruleEngine.js';
+import {smartArrange} from './smartArrange.js';
 
-const PRESETS = {
-  balanced: { front: 1.0, mid: 1.05, back: 1.12, derby: 1.0, dragon: 1.0, safety: 1.0 },
-  derby: { front: 1.25, mid: 1.08, back: 1.05, derby: 2.1, dragon: 0.7, safety: 0.8 },
-  safe: { front: 0.90, mid: 1.05, back: 1.28, derby: 0.6, dragon: 0.5, safety: 1.9 },
-  dragon: { front: 1.0, mid: 1.0, back: 1.0, derby: 0.8, dragon: 2.8, safety: 1.0 },
-  aggressive: { front: 1.60, mid: 1.02, back: 0.92, derby: 1.4, dragon: 0.6, safety: 0.85 },
-  custom: { front: 1.0, mid: 1.0, back: 1.0, derby: 1.0, dragon: 1.0, safety: 1.0 }
-};
 
 // Generates combination sets (n choose k)
 export function combos(arr, k) {
@@ -18,51 +11,7 @@ export function combos(arr, k) {
 }
 
 export function aiArrange(cards, mode = 'balanced', customWeights = null) {
-  const w = mode === 'custom' && customWeights ? { ...PRESETS.custom, ...customWeights } : (PRESETS[mode] || PRESETS.balanced);
-
-  function getScore(h, row) {
-    const e = evalHand(h);
-    const b = bonus(h, row).pts;
-    const rowW = row === 'front' ? w.front : row === 'mid' ? w.mid : w.back;
-    return (e.rank * 10000 + b * 1500 + (e.key % 1000)) * rowW;
-  }
-
-  let best = -Infinity;
-  let bestA = null;
-
-  // 1. Choose 5 cards for back
-  const backCombos = combos(cards, 5);
-  for (const back of backCombos) {
-    const r1 = cards.filter(c => !back.includes(c));
-    // 2. Choose 5 cards for mid
-    const midCombos = combos(r1, 5);
-    for (const mid of midCombos) {
-      const front = r1.filter(c => !mid.includes(c));
-      
-      if (front.length !== 3) continue;
-      if (!validArr(front, mid, back)) continue;
-      
-      const rowPower = getScore(back, 'back') * 1000000 + getScore(mid, 'mid') * 1000 + getScore(front, 'front');
-      const bonusPower = (bonus(front, 'front').pts + bonus(mid, 'mid').pts + bonus(back, 'back').pts) * 1200 * w.derby;
-      const isDrag = new Set([...front, ...mid, ...back].map(c => c.val)).size === 13;
-      const dragonPower = (isDrag ? 35000000 : 0) * w.dragon;
-      const safetyPower = (evalHand(back).rank >= evalHand(mid).rank ? 12000 : 0) * w.safety;
-      
-      const sc = rowPower + bonusPower + dragonPower + safetyPower;
-      
-      if (sc > best) {
-        best = sc;
-        bestA = { front, mid, back };
-      }
-    }
-  }
-
-  // Fallback if no valid hands found (highly unlikely unless deck is somehow invalid, but serves as safeguard)
-  return bestA || {
-    back: cards.slice(0, 5),
-    mid: cards.slice(5, 10),
-    front: cards.slice(10, 13)
-  };
+  return smartArrange(cards,mode,customWeights);
 }
 
 export function handPower(cards, row) {

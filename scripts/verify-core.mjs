@@ -2,9 +2,9 @@ import {readFileSync} from 'node:fs';
 import {createHash} from 'node:crypto';
 import assert from 'node:assert/strict';
 // Online repair explicitly authorized after audit on 2026-09-08. Original hashes remain in qa/core-preservation.json.
-// Only network/auth files are exempt; canonical rules and AI stay locked.
+// AI improvement explicitly requested by the owner; canonical game rules remain locked.
 const baseline=JSON.parse(readFileSync(new URL('../qa/core-preservation.json',import.meta.url)));
-for(const item of baseline.filter(x=>x.sha256 && !['functions/index.js','firestore.rules'].includes(x.file))){
+for(const item of baseline.filter(x=>x.sha256 && !['functions/index.js','firestore.rules','src/utils/aiEngine.js'].includes(x.file))){
  const hash=createHash('sha256').update(readFileSync(new URL('../'+item.file,import.meta.url))).digest('hex');
  assert.equal(hash,item.sha256,`${item.file} differs from audited source`);
  console.log('Unchanged:',item.file);

@@ -3,6 +3,7 @@ import { evalHand, validArr, calcScores, SUIT_RANK } from '../utils/ruleEngine.j
 import ArrangementBoard from './game/ArrangementBoard.jsx';
 import AnimatedScore from './game/AnimatedScore.jsx';
 import Showdown from './game/Showdown.jsx';
+import {aiArrange} from '../utils/aiEngine.js';
 import TableSurface from './game/TableSurface.jsx';
 import '../styles/practice-gameplay.css';
 import GameHeader from './game/GameHeader.jsx';
@@ -61,26 +62,7 @@ function makeDeck() {
 }
 
 function botArrange(cards) {
-  const sorted = [...cards].sort((a, b) => b.val - a.val || (SUIT_RANK[b.suit]||0) - (SUIT_RANK[a.suit]||0));
-  let best = null, bestRank = -1;
-  for (let t = 0; t < 80; t++) {
-    const sh = [...sorted];
-    if (t > 0) for (let i = sh.length - 1; i > 0; i--) { const j = Math.floor(Math.random()*(i+1)); [sh[i],sh[j]]=[sh[j],sh[i]]; }
-    const back = sh.slice(0, 5).sort((a,b) => b.val - a.val);
-    const mid = sh.slice(5, 10).sort((a,b) => b.val - a.val);
-    const front = sh.slice(10, 13).sort((a,b) => b.val - a.val);
-    if (validArr(front, mid, back)) {
-      const r = evalHand(back).rank * 100 + evalHand(mid).rank * 10 + evalHand(front).rank;
-      if (r > bestRank) { bestRank = r; best = { front, mid, back }; }
-    }
-  }
-  if (!best) {
-    const back = sorted.slice(0, 5);
-    const mid = sorted.slice(5, 10);
-    const front = sorted.slice(10, 13);
-    best = { front, mid, back, foul: true };
-  }
-  return { ...best, done: true, foul: best.foul || false };
+  return {...aiArrange(cards),done:true,foul:false};
 }
 
 export default function PracticeRoom({ player, onExit }) {
