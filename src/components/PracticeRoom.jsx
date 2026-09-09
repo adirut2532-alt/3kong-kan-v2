@@ -1,6 +1,12 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { evalHand, validArr, calcScores, SUIT_RANK } from '../utils/ruleEngine.js';
-import { Undo2, RotateCcw } from 'lucide-react';
+import ArrangementBoard from './game/ArrangementBoard.jsx';
+import AnimatedScore from './game/AnimatedScore.jsx';
+import Showdown from './game/Showdown.jsx';
+import TableSurface from './game/TableSurface.jsx';
+import '../styles/practice-gameplay.css';
+import GameHeader from './game/GameHeader.jsx';
+import {GameButton, Sheet} from './ui/GameUI.jsx';
 
 const BOTS = [
   { name: 'Bot สมศรี', avatar: '👾', id: 'bot1' },
@@ -340,170 +346,45 @@ export default function PracticeRoom({ player, onExit }) {
     );
   }
 
-  function renderSmallCard(c, i) {
-    const isRed = c.suit === '♥' || c.suit === '♦';
-    return (
-      <div key={i} className={`poker-card ${isRed?'red-card':'black-card'}`} style={{ transform:'scale(0.75)', margin:'-4px -2px' }}>
-        <span className="card-num" style={{ fontSize:'16px', fontWeight:900, lineHeight:1 }}>{c.rank}</span>
-        <span className="card-suit" style={{ fontSize:'20px', lineHeight:1 }}>{c.suit}</span>
-      </div>
-    );
-  }
-
-  // ── MENU SCREEN ──
-  if (phase === 'menu') return (
-    <div className="screen active" style={{ display:'flex', flexDirection:'column', height:'100vh', overflow:'hidden' }}>
-      <div className="app-header safe-area-top">
-        <button className="btn-secondary" style={{ padding:'6px 12px' }} onClick={onExit}>← กลับ</button>
-        <div className="header-logo">🤖 โหมดซ้อมกับ AI</div>
-        <button className="btn-secondary" style={{ padding:'6px 12px', fontSize:'11px', color:'#40e880' }} onClick={resetChips}>รีเซ็ตชิป</button>
-      </div>
-
-      {/* TABLE — fills most of the screen */}
-      <div style={{ flex:1, display:'flex', alignItems:'center', justifyContent:'center', padding:'12px', minHeight:0 }}>
-        <div style={{ position:'relative', width:'100%', maxWidth:'420px', aspectRatio:'1/1.1' }}>
-          {/* Green felt */}
-          <div style={{ position:'absolute', inset:0, background:'radial-gradient(ellipse at center, #1a6b3a 0%, #0d4a25 60%, #082e16 100%)', borderRadius:'24px', border:'4px solid #8B6914', boxShadow:'inset 0 0 40px rgba(0,0,0,0.4), 0 8px 32px rgba(0,0,0,0.5)' }}>
-            <div style={{ position:'absolute', inset:'12px', border:'2px dashed rgba(212,175,55,0.25)', borderRadius:'18px' }}></div>
-            <div style={{ position:'absolute', top:'50%', left:'50%', transform:'translate(-50%,-50%)', fontSize:'20px', fontWeight:900, color:'rgba(255,255,255,0.06)', whiteSpace:'nowrap', letterSpacing:'8px' }}>3 กอง กาญ</div>
-          </div>
-
-          {/* Player: Top (Bot สมศรี) */}
-          <div style={{ position:'absolute', top:'-8px', left:'50%', transform:'translateX(-50%)', textAlign:'center', zIndex:2 }}>
-            <div style={{ width:'52px', height:'52px', borderRadius:'50%', border:'3px solid var(--primary)', display:'flex', alignItems:'center', justifyContent:'center', fontSize:'28px', background:'var(--card-bg)', margin:'0 auto' }}>{BOTS[0].avatar}</div>
-            <div style={{ fontWeight:800, fontSize:'12px', marginTop:'2px' }}>{BOTS[0].name}</div>
-            <div style={{ fontSize:'11px', color:'var(--primary)' }}>🪙 {botChips.bot1}</div>
-          </div>
-
-          {/* Player: Left (Bot สมศักดิ์) */}
-          <div style={{ position:'absolute', left:'-4px', top:'50%', transform:'translateY(-50%)', textAlign:'center', zIndex:2 }}>
-            <div style={{ width:'52px', height:'52px', borderRadius:'50%', border:'3px solid var(--primary)', display:'flex', alignItems:'center', justifyContent:'center', fontSize:'28px', background:'var(--card-bg)', margin:'0 auto' }}>{BOTS[1].avatar}</div>
-            <div style={{ fontWeight:800, fontSize:'12px', marginTop:'2px' }}>{BOTS[1].name}</div>
-            <div style={{ fontSize:'11px', color:'var(--primary)' }}>🪙 {botChips.bot2}</div>
-          </div>
-
-          {/* Player: Right (Bot วันชัย) */}
-          <div style={{ position:'absolute', right:'-4px', top:'50%', transform:'translateY(-50%)', textAlign:'center', zIndex:2 }}>
-            <div style={{ width:'52px', height:'52px', borderRadius:'50%', border:'3px solid var(--primary)', display:'flex', alignItems:'center', justifyContent:'center', fontSize:'28px', background:'var(--card-bg)', margin:'0 auto' }}>{BOTS[2].avatar}</div>
-            <div style={{ fontWeight:800, fontSize:'12px', marginTop:'2px' }}>{BOTS[2].name}</div>
-            <div style={{ fontSize:'11px', color:'var(--primary)' }}>🪙 {botChips.bot3}</div>
-          </div>
-
-          {/* Player: Bottom (Me) */}
-          <div style={{ position:'absolute', bottom:'-8px', left:'50%', transform:'translateX(-50%)', textAlign:'center', zIndex:2 }}>
-            <div style={{ width:'52px', height:'52px', borderRadius:'50%', border:'3px solid var(--primary)', display:'flex', alignItems:'center', justifyContent:'center', fontSize:'28px', background:'var(--card-bg)', margin:'0 auto' }}>{player.avatar||'🦊'}</div>
-            <div style={{ fontWeight:800, fontSize:'12px', marginTop:'2px', color:'var(--primary)' }}>{player.name} (คุณ)</div>
-            <div style={{ fontSize:'11px', color:'var(--primary)' }}>🪙 {myChips}</div>
-          </div>
-        </div>
-      </div>
-
-      {/* BUTTONS — fixed at bottom */}
-      <div className="safe-area-bottom" style={{ padding:'12px 16px', display:'flex', flexDirection:'column', gap:'10px' }}>
-        <button className="btn-premium" style={{ width:'100%', padding:'16px', fontSize:'16px', fontWeight:900 }} onClick={startPractice}>
-          🎴 ฝึกฝนซ้อมมือ
-        </button>
-        <button className="btn-secondary" style={{ width:'100%', padding:'14px', fontSize:'14px' }} onClick={() => setShowRules(!showRules)}>
-          📖 กติกาการเล่นเบื้องต้น
-        </button>
-        {showRules && (
-          <div className="glass-panel" style={{ padding:'16px', whiteSpace:'pre-wrap', fontSize:'13px', lineHeight:1.7, color:'var(--text-main)', maxHeight:'40vh', overflowY:'auto' }}>
-            {RULES_TEXT}
-          </div>
-        )}
-      </div>
-    </div>
-  );
-
-  // ── PLAYING SCREEN ──
-  if (phase === 'playing') return (
-    <div className="screen active" style={{ display:'flex', flexDirection:'column', height:'100vh', overflow:'hidden' }}>
-      <div className="app-header safe-area-top">
-        <button className="btn-secondary" style={{ padding:'6px 12px' }} onClick={() => setPhase('menu')}>← กลับ</button>
-        <div className="header-logo">🤖 โหมดซ้อมกับ AI</div>
-        <span style={{ fontSize:'11px', color:'var(--text-muted)' }}>🪙 {myChips}</span>
-      </div>
-
-      {/* GHOST CARD for drag */}
-      <div ref={ghostRef} className="poker-card" style={{ position:'fixed', left:0, top:0, display:'none', pointerEvents:'none', zIndex:9999, opacity:0.95, boxShadow:'0 14px 36px rgba(0,0,0,0.55)', willChange:'transform', transition:'none' }}>
-        <span ref={ghostNumRef} className="card-num" style={{ fontSize:'20px', fontWeight:900, lineHeight:1 }}></span>
-        <span ref={ghostSuitRef} className="card-suit" style={{ fontSize:'26px', lineHeight:1 }}></span>
-      </div>
-
-      <div className="table-felt">
-        <div className="table-oval">
-          <div className="table-logo-text">3 กอง กาญ</div>
-          {BOTS.map((bot, idx) => {
-            const posClass = idx===0?'felt-pos-top':idx===1?'felt-pos-left':'felt-pos-right';
-            return (
-              <div key={bot.id} className={`felt-player-box ${posClass}`}>
-                <div className="felt-av">{bot.avatar}</div>
-                <div className="felt-nm">{bot.name}</div>
-                <div className="felt-chips">🪙 {botChips[bot.id]}</div>
-                <span style={{ fontSize:'9px', background:'rgba(50,232,117,0.2)', color:'#60e890', padding:'1px 5px', borderRadius:'4px', marginTop:'2px' }}>จัดเสร็จแล้ว</span>
-              </div>
-            );
-          })}
-          <div className="felt-player-box felt-pos-bottom">
-            <div className="felt-av">{player.avatar||'🦊'}</div>
-            <div className="felt-nm">{player.name} (คุณ)</div>
-            <div className="felt-chips">🪙 {myChips}</div>
-            {hand.done && <span style={{ fontSize:'9px', background:'rgba(50,232,117,0.2)', color:'#60e890', padding:'1px 5px', borderRadius:'4px', marginTop:'2px' }}>จัดเสร็จแล้ว</span>}
-            {!hand.done && <span style={{ fontSize:'9px', color:'var(--primary)', marginTop:'2px' }}>กำลังจัดไพ่...</span>}
-          </div>
-        </div>
-      </div>
-
-      <div className="my-hand safe-area-bottom" style={{ overflowY:'auto' }}>
-        <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:'8px' }}>
-          <span style={{ color:'var(--text-muted)', fontSize:'10px' }}>ลาก/จิ้มการ์ด เพื่อวางแต่ละกอง</span>
-        </div>
-        <div style={{ display:'flex', flexDirection:'column', gap:'6px', marginBottom:'8px' }}>
-          {['front','mid','back'].map(zone => {
-            const label = zone==='front'?'หน้า (3)':zone==='mid'?'กลาง (5)':'หลัง (5)';
-            const cards = hand[zone];
-            const full = cards.length === MAX[zone];
-            return (
-              <div key={zone} className="hand-pile-container">
-                <span className="hand-pile-label">{label}</span>
-                <div data-zone={zone} className={`drop-zone ${selectedCard?'active-hover':''} ${full?'pile-full':''}`} onClick={() => moveCardTo(zone)}>
-                  {cards.map((c,i) => renderCard(c,i,zone))}
-                  {cards.length === 0 && <span style={{ fontSize:'11px', color:'rgba(255,255,255,0.15)', margin:'auto' }}>จิ้มไพ่เพื่อวาง{label}</span>}
-                </div>
-                {full && <span style={{ alignSelf:'center', fontSize:'9px', background:'var(--glass)', border:'1px solid var(--line)', padding:'2px 4px', borderRadius:'4px', color:'var(--primary)' }}>{evalHand(cards).name}</span>}
-              </div>
-            );
-          })}
-        </div>
-        <div style={{ marginBottom:'8px' }}>
-          <div data-zone="unplaced" className="drop-zone" style={{ minHeight:'66px', display:'flex', gap:'3px', flexWrap:'wrap' }} onClick={() => moveCardTo('unplaced')}>
-            {hand.unplaced.map((c,i) => renderCard(c,i,'unplaced'))}
-          </div>
-        </div>
-        <div style={{ display:'flex', gap:'6px', marginBottom:'4px' }}>
-          <button className="btn-secondary" style={{ flex:1, padding:'10px', fontSize:'13px', fontWeight:800, background:'rgba(64,232,128,0.1)', border:'1px solid rgba(64,232,128,0.3)', color:'#40e880' }} onClick={autoArrange}>🤖 จัดไพ่ให้</button>
-          <button className="btn-secondary" style={{ flex:1, padding:'10px', fontSize:'13px', fontWeight:800, whiteSpace:'nowrap' }} onClick={handleSwapMidBack}>⇅ สลับกลาง/หลัง</button>
-        </div>
-        <div style={{ display:'flex', gap:'6px', marginBottom:'8px' }}>
-          <button className="btn-secondary" style={{ padding:'10px' }} onClick={handleUndo}><Undo2 size={14} /></button>
-          <button className="btn-secondary" style={{ padding:'10px' }} onClick={handleReset}><RotateCcw size={14} /></button>
-          <button className="btn-premium" style={{ flex:1, padding:'10px', fontSize:'15px' }} onClick={handleSubmit} disabled={hand.done}>
-            {hand.done ? '✓ ส่งแล้ว' : '⚔️ ส่งไพ่สู้!'}
-          </button>
-        </div>
-      </div>
-    </div>
-  );
+  const tableSeats = BOTS.map((bot,i)=>({player:{...bot,chips:botChips[bot.id]},pos:['felt-pos-top','felt-pos-left','felt-pos-right'][i]}));
+  const self = {...player,chips:myChips};
+  if (phase === 'menu') return <main className="game-session">
+    <GameHeader title="ห้องซ้อม" subtitle="เล่นกับบอท 3 คน · ชิปฝึก" onBack={onExit}/>
+    <TableSurface seats={tableSeats} self={self} status="พร้อมเมื่อไหร่ เริ่มได้เลย"/>
+    <div className="waiting-actions"><GameButton onClick={startPractice}>เริ่มฝึกจัดไพ่</GameButton><GameButton variant="secondary" onClick={()=>setShowRules(true)}>กติกาการเล่น</GameButton><button className="text-button" onClick={resetChips}>รีเซ็ตชิปฝึกเป็น 1,000</button></div>
+    {showRules&&<Sheet title="กติกาการเล่นเดิม" onClose={()=>setShowRules(false)}><div className="rules-copy">{RULES_TEXT}</div></Sheet>}
+  </main>;
+  if (phase === 'playing') return <main className="game-session practice-gameplay">
+    <GameHeader title="ห้องซ้อม" subtitle={`ชิปฝึก ${myChips.toLocaleString('th-TH')}`} onBack={()=>setPhase('menu')}/>
+    <div ref={ghostRef} className="poker-card" style={{position:'fixed',left:0,top:0,display:'none',pointerEvents:'none',zIndex:9999,opacity:.95,willChange:'transform',transition:'none'}}><span ref={ghostNumRef} className="card-num"/><span ref={ghostSuitRef} className="card-suit"/></div>
+    <div className="game-play-layout"><TableSurface seats={tableSeats} self={self} hands={botHands} compact status="กำลังจัดไพ่"/><ArrangementBoard hand={hand} selectedCard={selectedCard} renderCard={renderCard} moveCardTo={moveCardTo} onUndo={handleUndo} onReset={handleReset} onSwap={handleSwapMidBack} onAuto={autoArrange} onSubmit={handleSubmit} undoCount={undoStack.length}/></div>
+  </main>;
 
   // ── RESULTS SCREEN ──
   return (
-    <div className="screen active" style={{ display:'flex', flexDirection:'column', height:'100vh', overflow:'hidden' }}>
-      <div className="app-header safe-area-top">
-        <button className="btn-secondary" style={{ padding:'6px 12px' }} onClick={() => setPhase('menu')}>← กลับ</button>
-        <div className="header-logo">🤖 โหมดซ้อมกับ AI</div>
-        <button className="btn-secondary" style={{ padding:'6px 12px', fontSize:'11px', color:'#40e880' }} onClick={resetChips}>รีเซ็ตชิป</button>
-      </div>
-      <div style={{ flex:1, padding:'10px 12px', overflowY:'auto', overflowX:'hidden' }}>
+    <div className="game-session">
+      <GameHeader title="ผลห้องซ้อม" subtitle="ชิปฝึก · ไม่มีผลต่อยอดออนไลน์" onBack={()=>setPhase('menu')}/>
+      <div className="results-view" style={{ flex:1, padding:'10px 12px', overflowY:'auto', overflowX:'hidden' }}>
+        <h2 style={{ fontSize:'18px', fontWeight:900, color:'var(--primary)', textAlign:'center', marginBottom:'10px' }}>🏆 ผลการปะทะฝีมือรอบนี้</h2>
+
+        <Showdown players={scores||[]} hands={{...botHands,[player.name]:{...hand,foul:!validArr(hand.front,hand.mid,hand.back)}}} focusName={player.name}/>
+        {/* Score summary */}
+        <div className="glass-panel" style={{ padding:'10px', marginBottom:'12px' }}>
+          <div style={{ fontSize:'12px', fontWeight:900, color:'var(--primary)', marginBottom:'6px' }}>📊 ตารางคะแนนรวม</div>
+          {scores && scores.map((s,i) => {
+            const isMe = s.name === player.name;
+            const isWin = s.roundScore > 0;
+            return (
+              <div key={s.id||s.name} className="score-reveal" style={{'--score-index':i,'--score-glow':isWin?'#78d49a':s.roundScore<0?'#d58d95':'#d4b779', display:'flex', justifyContent:'space-between', alignItems:'center', padding:'8px 10px', marginBottom:'4px', borderRadius:'8px', borderLeft:`3px solid ${isWin?'#40e880':s.roundScore<0?'#ff6d86':'var(--line)'}`, background: isMe ? 'rgba(212,175,55,0.1)' : 'rgba(0,0,0,0.2)' }}>
+                <span style={{ fontWeight:800, fontSize:'13px', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap', flex:1, minWidth:0 }}>{s.avatar} {s.name} {isMe?'(คุณ)':''}</span>
+                <span style={{ fontWeight:900, fontSize:'15px', color:isWin?'#40e880':s.roundScore<0?'#ff6d86':'#fff', marginLeft:'8px', flexShrink:0 }}>
+                  <AnimatedScore value={s.roundScore} unit="คะแนน" delay={i*110}/>
+                </span>
+              </div>
+            );
+          })}
+        </div>
+
         <button className="btn-premium" style={{ width:'100%', padding:'14px', fontSize:'16px', fontWeight:900, marginBottom:'10px' }} onClick={startPractice}>
           🎴 ฝึกฝนซ้อมมือ
         </button>
@@ -516,25 +397,7 @@ export default function PracticeRoom({ player, onExit }) {
           </div>
         )}
 
-        <h2 style={{ fontSize:'18px', fontWeight:900, color:'var(--primary)', textAlign:'center', marginBottom:'10px' }}>🏆 ผลการปะทะฝีมือรอบนี้</h2>
-
-        {/* Score summary */}
-        <div className="glass-panel" style={{ padding:'10px', marginBottom:'12px' }}>
-          <div style={{ fontSize:'12px', fontWeight:900, color:'var(--primary)', marginBottom:'6px' }}>📊 ตารางคะแนนรวม</div>
-          {scores && scores.map((s,i) => {
-            const isMe = s.name === player.name;
-            const isWin = s.roundScore > 0;
-            return (
-              <div key={i} style={{ display:'flex', justifyContent:'space-between', alignItems:'center', padding:'8px 10px', marginBottom:'4px', borderRadius:'8px', borderLeft:`3px solid ${isWin?'#40e880':s.roundScore<0?'#ff6d86':'var(--line)'}`, background: isMe ? 'rgba(212,175,55,0.1)' : 'rgba(0,0,0,0.2)' }}>
-                <span style={{ fontWeight:800, fontSize:'13px', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap', flex:1, minWidth:0 }}>{s.avatar} {s.name} {isMe?'(คุณ)':''}</span>
-                <span style={{ fontWeight:900, fontSize:'15px', color:isWin?'#40e880':s.roundScore<0?'#ff6d86':'#fff', marginLeft:'8px', flexShrink:0 }}>
-                  {isWin?'+':''}{s.roundScore} คะแนน
-                </span>
-              </div>
-            );
-          })}
-        </div>
-
+        <details className="result-details"><summary>ดูรายละเอียดเทียบไพ่</summary>
         {/* Matchup details */}
         <div style={{ fontSize:'12px', fontWeight:900, color:'var(--primary)', marginBottom:'8px' }}>⚔️ รายละเอียดเทียบไพ่ (คุณ ปะทะ บอท)</div>
         {matchups.map((mu, mi) => (
@@ -582,6 +445,7 @@ export default function PracticeRoom({ player, onExit }) {
           </div>
         ))}
 
+        </details>
         <div style={{ textAlign:'center', marginTop:'16px', paddingBottom:'40px' }}>
           <button className="btn-premium" style={{ padding:'14px 40px', fontSize:'16px', fontWeight:900 }} onClick={startPractice}>
             🎴 เริ่มรอบใหม่!

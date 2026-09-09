@@ -1,0 +1,52 @@
+name: Firebase deployment preflight
+on:
+  pull_request:
+    branches: [main]
+    paths: ['.github/workflows/firebase-preflight.yml']
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  preflight:
+    if: github.event_name == 'workflow_dispatch' || github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: 654eb92eef50a04861c231fd4fbb4f869b535f9f
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - run: npm ci --prefix functions
+      - name: Read-only Firebase access and migration preflight
+        env:
+          FIREBASE_SERVICE_ACCOUNT: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
+        run: |
+          node <<'NODE'
+          const {GoogleAuth}=require('./functions/node_modules/google-auth-library');
+          (async()=>{
+            const key=JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT||'{}');
+            if(key.project_id!=='poker-kan')throw Error('Missing or wrong project credential');
+            const auth=new GoogleAuth({credentials:key,scopes:['https://www.googleapis.com/auth/cloud-platform']});
+            const client=await auth.getClient();
+            console.log('Deployment principal:',key.client_email);
+            const permissions=['serviceusage.services.get','serviceusage.services.list','serviceusage.services.use','serviceusage.services.enable','cloudfunctions.functions.get','cloudfunctions.functions.list','cloudfunctions.functions.create','cloudfunctions.functions.update','cloudfunctions.functions.delete','cloudfunctions.functions.setIamPolicy','cloudbuild.builds.create','cloudbuild.builds.get','firebase.projects.get','firebasehosting.sites.update','firebaserules.releases.create','firebaserules.releases.update','firebaserules.rulesets.create','resourcemanager.projects.getIamPolicy','resourcemanager.projects.setIamPolicy'];
+            const checks=[
+              ['project','https://cloudresourcemanager.googleapis.com/v1/projects/poker-kan:testIamPermissions',permissions],
+              ['runtime','https://iam.googleapis.com/v1/projects/poker-kan/serviceAccounts/poker-kan@appspot.gserviceaccount.com:testIamPermissions',['iam.serviceAccounts.actAs','iam.serviceAccounts.get','iam.serviceAccounts.getIamPolicy','iam.serviceAccounts.setIamPolicy']]
+            ];
+            for(const [label,url,wanted] of checks){
+              try{
+                const r=await client.request({url,method:'POST',data:{permissions:wanted}});
+                const granted=r.data.permissions||[];
+                console.log(JSON.stringify({check:label,granted,missing:wanted.filter(p=>!granted.includes(p))}));
+              }catch(e){console.log(JSON.stringify({check:label,error:e.response?.status||'request failed'}));}
+            }
+            for(const service of ['cloudfunctions.googleapis.com','cloudbuild.googleapis.com','artifactregistry.googleapis.com','runtimeconfig.googleapis.com']){
+              try{const r=await client.request({url:'https://serviceusage.googleapis.com/v1/projects/poker-kan/services/'+service});console.log(JSON.stringify({service,state:r.data.state}));}
+              catch(e){console.log(JSON.stringify({service,error:e.response?.status||'request failed'}));}
+            }
+          })().catch(()=>{console.error('Permission inventory failed');process.exitCode=1;});
+          NODE

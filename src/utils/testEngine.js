@@ -1,6 +1,6 @@
 // ── Rule Engine Parity Validation Script ──
 
-import { evalHand, validArr, cmpH, calcScores, makeDeck } from './ruleEngine.js';
+import { evalHand, validArr, makeDeck } from './ruleEngine.js';
 
 console.log('🧪 Starting 3 Kong Kan 2.0 Rule Engine Validation...');
 
@@ -70,7 +70,8 @@ try {
   }
   console.log('✅ Test 4 Passed: Arrangement foul rules successfully validated.');
 
-  console.log('\n🎉 ALL CORE RULE ENGINE TESTS PASSED SUCCESSFULLY! 100% PARITY CONFIRMED.');
+  console.log('\n🎉 ALL CORE RULE ENGINE TESTS PASSED SUCCESSFULLY! 4 baseline cases passed.');
 } catch (e) {
   console.error('❌ VALIDATION ERROR:', e.message);
+  process.exitCode = 1;
 }

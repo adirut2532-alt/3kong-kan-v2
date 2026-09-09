@@ -1,0 +1,28 @@
+npm warn Unknown env config "http-proxy". This will stop working in the next major version of npm.
+
+> 3kong-kan-v2@2.0.0 build
+> vite build
+
+vite v5.4.21 building for production...
+transforming...
+✓ 1532 modules transformed.
+rendering chunks...
+computing gzip size...
+dist/index.html                             0.69 kB │ gzip:   0.42 kB
+dist/assets/index-BCh6v-5t.css             40.50 kB │ gzip:   9.36 kB
+dist/assets/arrow-left-Tj2mSHVZ.js          0.33 kB │ gzip:   0.27 kB
+dist/assets/refresh-cw-BvxJzEMw.js          0.87 kB │ gzip:   0.44 kB
+dist/assets/Login-DiREH6ZY.js               2.98 kB │ gzip:   1.56 kB
+dist/assets/Register-CFTPVMQZ.js            3.37 kB │ gzip:   1.70 kB
+dist/assets/Lobby-BSy04Vnf.js               8.82 kB │ gzip:   3.68 kB
+dist/assets/ArrangementBoard-CvA8eKyD.js   13.38 kB │ gzip:   4.88 kB
+dist/assets/PracticeRoom-BqV3Oj9A.js       14.66 kB │ gzip:   5.54 kB
+dist/assets/AdminPanel-CBK0IKz6.js         33.85 kB │ gzip:   8.99 kB
+dist/assets/GameRoom-vaghGcAY.js           39.31 kB │ gzip:  13.07 kB
+dist/assets/index-BKcHwVTq.js             635.68 kB │ gzip: 166.47 kB
+
+(!) Some chunks are larger than 500 kB after minification. Consider:
+- Using dynamic import() to code-split the application
+- Use build.rollupOptions.output.manualChunks to improve chunking: https://rollupjs.org/configuration-options/#output-manualchunks
+- Adjust chunk size limit for this warning via build.chunkSizeWarningLimit.
+✓ built in 4.42s

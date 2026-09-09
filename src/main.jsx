@@ -8,3 +8,10 @@ ReactDOM.createRoot(document.getElementById('root')).render(
     <App />
   </React.StrictMode>,
 )
+
+import './styles/tokens.css'
+import './styles/ui.css'
+import './styles/lobby.css'
+import './styles/auth.css'
+import './styles/game.css'
+import './styles/game-room-v2.css'

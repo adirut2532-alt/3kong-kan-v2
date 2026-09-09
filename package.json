@@ -7,17 +7,24 @@
     "dev": "vite",
     "build": "vite build",
     "lint": "eslint . --ext js,jsx --report-unused-disable-directives --max-warnings 0",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "test": "node src/utils/testEngine.js && node scripts/verify-core.mjs && node scripts/sync-engine.mjs --check && node tests/room-snapshot.mjs && node tests/use-event.mjs",
+    "lint:ui": "eslint src/components/ui src/components/lobby src/components/game qa scripts src/App.jsx --ext js,jsx,mjs --max-warnings 0",
+    "test:online": "firebase emulators:exec --project demo-3kong-online --only auth,firestore \"node tests/online-emulator.mjs\"",
+    "seed:online": "node scripts/seed-online-emulator.cjs",
+    "test:transport": "firebase emulators:exec --project demo-3kong-online --only auth,firestore,functions \"node tests/callable-emulator.mjs\"",
+    "test:http": "firebase emulators:exec --project demo-3kong-online --only auth,firestore \"node tests/run-http-tests.cjs tests/callable-emulator.mjs\""
   },
   "dependencies": {
     "firebase": "^10.12.0",
+    "html2canvas": "^1.4.1",
+    "lucide-react": "^0.379.0",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
-    "react-router-dom": "^6.23.1",
-    "lucide-react": "^0.379.0",
-    "html2canvas": "^1.4.1"
+    "react-router-dom": "^6.23.1"
   },
   "devDependencies": {
+    "@firebase/rules-unit-testing": "^3.0.4",
     "@types/react": "^18.3.3",
     "@types/react-dom": "^18.3.0",
     "@vitejs/plugin-react": "^4.3.0",
@@ -25,6 +32,8 @@
     "eslint-plugin-react": "^7.34.1",
     "eslint-plugin-react-hooks": "^4.6.2",
     "eslint-plugin-react-refresh": "^0.4.7",
+    "firebase-tools": "^13.35.1",
+    "jsdom": "^26.1.0",
     "vite": "^5.2.11"
   }
 }

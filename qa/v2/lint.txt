@@ -1,0 +1,5 @@
+npm warn Unknown env config "http-proxy". This will stop working in the next major version of npm.
+
+> 3kong-kan-v2@2.0.0 lint:ui
+> eslint src/components/ui src/components/lobby src/components/game qa scripts src/App.jsx --ext js,jsx,mjs --max-warnings 0
+

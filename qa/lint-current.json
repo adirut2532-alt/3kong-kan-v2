@@ -1,0 +1,128 @@
+[
+  {
+    "file": "functions/index.js",
+    "rule": "no-undef",
+    "severity": 2,
+    "message": "'isDragonHand' is not defined."
+  },
+  {
+    "file": "src/components/AdminPanel.jsx",
+    "rule": "no-unused-vars",
+    "severity": 2,
+    "message": "'Edit2' is defined but never used."
+  },
+  {
+    "file": "src/components/AdminPanel.jsx",
+    "rule": "no-unused-vars",
+    "severity": 2,
+    "message": "'ShieldAlert' is defined but never used."
+  },
+  {
+    "file": "src/components/AdminPanel.jsx",
+    "rule": "no-unused-vars",
+    "severity": 2,
+    "message": "'KeyRound' is defined but never used."
+  },
+  {
+    "file": "src/components/AdminPanel.jsx",
+    "rule": "no-empty",
+    "severity": 2,
+    "message": "Empty block statement."
+  },
+  {
+    "file": "src/components/AdminPanel.jsx",
+    "rule": "no-empty",
+    "severity": 2,
+    "message": "Empty block statement."
+  },
+  {
+    "file": "src/components/AdminPanel.jsx",
+    "rule": "no-unused-vars",
+    "severity": 2,
+    "message": "'name' is defined but never used."
+  },
+  {
+    "file": "src/components/AdminPanel.jsx",
+    "rule": "no-empty",
+    "severity": 2,
+    "message": "Empty block statement."
+  },
+  {
+    "file": "src/components/AdminPanel.jsx",
+    "rule": "no-empty",
+    "severity": 2,
+    "message": "Empty block statement."
+  },
+  {
+    "file": "src/components/AdminPanel.jsx",
+    "rule": "no-empty",
+    "severity": 2,
+    "message": "Empty block statement."
+  },
+  {
+    "file": "src/components/GameRoom.jsx",
+    "rule": "no-unused-vars",
+    "severity": 2,
+    "message": "'setAiMode' is assigned a value but never used."
+  },
+  {
+    "file": "src/components/GameRoom.jsx",
+    "rule": "no-unused-vars",
+    "severity": 2,
+    "message": "'unreadCount' is assigned a value but never used."
+  },
+  {
+    "file": "src/components/GameRoom.jsx",
+    "rule": "no-empty",
+    "severity": 2,
+    "message": "Empty block statement."
+  },
+  {
+    "file": "src/components/GameRoom.jsx",
+    "rule": "no-empty",
+    "severity": 2,
+    "message": "Empty block statement."
+  },
+  {
+    "file": "src/components/GameRoom.jsx",
+    "rule": "react-hooks/exhaustive-deps",
+    "severity": 1,
+    "message": "React Hook useEffect has missing dependencies: 'announce', 'chatOpen', 'memberId', 'myId', 'onExit', 'playSound', 'player.name', and 'settleScores'. Either include them or remove the dependency array. If 'onExit' changes too often, find the parent component that defines it and wrap that definition in useCallback."
+  },
+  {
+    "file": "src/components/GameRoom.jsx",
+    "rule": "react-hooks/exhaustive-deps",
+    "severity": 1,
+    "message": "React Hook useEffect has a missing dependency: 'room'. Either include it or remove the dependency array."
+  },
+  {
+    "file": "src/components/Lobby.jsx",
+    "rule": "no-empty",
+    "severity": 2,
+    "message": "Empty block statement."
+  },
+  {
+    "file": "src/components/Login.jsx",
+    "rule": "react-hooks/exhaustive-deps",
+    "severity": 1,
+    "message": "React Hook useEffect has a missing dependency: 'onLoginSuccess'. Either include it or remove the dependency array. If 'onLoginSuccess' changes too often, find the parent component that defines it and wrap that definition in useCallback."
+  },
+  {
+    "file": "src/components/PracticeRoom.jsx",
+    "rule": "no-unused-vars",
+    "severity": 2,
+    "message": "'renderSmallCard' is defined but never used."
+  },
+  {
+    "file": "src/utils/testEngine.js",
+    "rule": "no-unused-vars",
+    "severity": 2,
+    "message": "'cmpH' is defined but never used."
+  },
+  {
+    "file": "src/utils/testEngine.js",
+    "rule": "no-unused-vars",
+    "severity": 2,
+    "message": "'calcScores' is defined but never used."
+  }
+]

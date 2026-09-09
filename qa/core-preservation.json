@@ -1,0 +1,47 @@
+[
+  {
+    "file": "src/components/GameRoom.jsx",
+    "functionCount": 27,
+    "changed": []
+  },
+  {
+    "file": "src/components/PracticeRoom.jsx",
+    "functionCount": 19,
+    "changed": []
+  },
+  {
+    "file": "src/components/Lobby.jsx",
+    "functionCount": 3,
+    "changed": []
+  },
+  {
+    "file": "src/components/Login.jsx",
+    "functionCount": 2,
+    "changed": []
+  },
+  {
+    "file": "src/components/Register.jsx",
+    "functionCount": 2,
+    "changed": []
+  },
+  {
+    "file": "src/utils/ruleEngine.js",
+    "identical": true,
+    "sha256": "ff49d8305341b7651837d2c6b95cc6e84a24f938c47719d88afab41633ea07df"
+  },
+  {
+    "file": "src/utils/aiEngine.js",
+    "identical": true,
+    "sha256": "f615994a7e5e07c6e3c263301b08404b441e21e8dcf79edd808715476347c754"
+  },
+  {
+    "file": "functions/index.js",
+    "identical": true,
+    "sha256": "4bf1769fa262e9eae2f121a0ba6e3aa675f83d7707844ae5b31f4a8b0f283fd7"
+  },
+  {
+    "file": "firestore.rules",
+    "identical": true,
+    "sha256": "8fc48bd925c60c1fedd5faacbe254179ecad4b973365ac696cf9ec8a2de6abb1"
+  }
+]
