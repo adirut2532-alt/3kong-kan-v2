@@ -8,7 +8,7 @@
     "build": "vite build",
     "lint": "eslint . --ext js,jsx --report-unused-disable-directives --max-warnings 0",
     "preview": "vite preview",
-    "test": "node src/utils/testEngine.js && node scripts/verify-core.mjs && node scripts/sync-engine.mjs --check && node tests/room-snapshot.mjs && node tests/use-event.mjs",
+    "test": "node src/utils/testEngine.js && node scripts/verify-core.mjs && node scripts/sync-engine.mjs --check && node tests/derby-scoring.mjs && node tests/room-snapshot.mjs && node tests/use-event.mjs",
     "lint:ui": "eslint src/components/ui src/components/lobby src/components/game qa scripts src/App.jsx --ext js,jsx,mjs --max-warnings 0",
     "test:online": "firebase emulators:exec --project demo-3kong-online --only auth,firestore \"node tests/online-emulator.mjs\"",
     "seed:online": "node scripts/seed-online-emulator.cjs",

@@ -6,8 +6,10 @@ import assert from 'node:assert/strict';
 const baseline=JSON.parse(readFileSync(new URL('../qa/core-preservation.json',import.meta.url)));
 for(const item of baseline.filter(x=>x.sha256 && !['functions/index.js','firestore.rules','src/utils/aiEngine.js'].includes(x.file))){
  const hash=createHash('sha256').update(readFileSync(new URL('../'+item.file,import.meta.url))).digest('hex');
- assert.equal(hash,item.sha256,`${item.file} differs from audited source`);
- console.log('Unchanged:',item.file);
+ // Owner-approved Derby correction: lock the new engine; retain original audit hash.
+ const expected=item.file==='src/utils/ruleEngine.js'?'8160f0342fdc21467d9576e3352b7933b484d63a2f02a4ef33ff1c8bd39b88ff':item.sha256;
+ assert.equal(hash,expected,`${item.file} differs from approved source`);
+ console.log('Verified:',item.file);
 }
 const {sha256}=await import('../src/utils/sha256.js');
 assert.equal(await sha256('abc'),'ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad');

@@ -219,6 +219,7 @@ export function calcScores(players, hands) {
     _pb: {}
   }));
 
+  const pairScores = [];
   for (let i = 0; i < n; i++) {
     for (let j = i + 1; j < n; j++) {
       const a = sc[i];
@@ -272,20 +273,24 @@ export function calcScores(players, hands) {
       
       a.roundScore += ps;
       b.roundScore += qs;
+      pairScores.push({ a, b, ps, qs });
     }
   }
 
-  // Derby Check: Swept all active non-fouled players (requires at least 2 non-fouled opponents)
+  // Derby: a four-player table, sweeping all three opponents.
   sc.forEach(s => {
     if (h(s).foul) return;
     const opps = sc.filter(o => o.id !== s.id && !h(o).foul);
-    if (n >= 4 && opps.length >= 2 && s._tw === opps.length) s.isDarby = true;
+    if (n === 4 && opps.length === 3 && s._tw === 3) s.isDarby = true;
   });
 
-  if (sc.some(s => s.isDarby)) {
-    sc.forEach(s => {
-      s.roundScore *= 4;
-    });
+  // Each winning pair already includes Talu x2. Add that pair once more
+  // for x4 total; the other players' mutual comparisons stay unchanged.
+  for (const { a, b, ps, qs } of pairScores) {
+    if (a.isDarby || b.isDarby) {
+      a.roundScore += ps;
+      b.roundScore += qs;
+    }
   }
 
   // Foul: Pays 6 to each non-fouled opponent (zero-sum)
