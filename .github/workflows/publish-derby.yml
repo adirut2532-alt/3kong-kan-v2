@@ -1,0 +1,62 @@
+name: Publish approved Derby scoring
+on:
+  push:
+    branches: [codex/derby-scoring]
+    paths: ['.github/workflows/publish-derby.yml']
+permissions:
+  contents: read
+concurrency:
+  group: poker-kan-production
+  cancel-in-progress: false
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: f0aea15ae96f0ea155d358ff238ec72ea5566df6
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: npm ci
+      - run: npm ci --prefix functions
+      - run: npm test && node tests/smart-arrange.mjs && npm run lint && npm run build
+      - name: Publish verified frontend
+        env:
+          DEPLOY_CREDENTIAL: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
+          GOOGLE_APPLICATION_CREDENTIALS: /tmp/3kong-showdown-deploy.json
+        run: |
+          node <<'NODE'
+          const fs=require('node:fs');
+          const key=JSON.parse(process.env.DEPLOY_CREDENTIAL||'{}');
+          if(key.project_id!=='poker-kan')throw Error('Wrong deployment project');
+          fs.writeFileSync(process.env.GOOGLE_APPLICATION_CREDENTIALS,JSON.stringify(key),{mode:0o600});
+          NODE
+          npx firebase deploy --project poker-kan --only functions:gameAction --non-interactive
+          npx firebase deploy --project poker-kan --only hosting --non-interactive
+      - name: Verify published version
+        run: |
+          node <<'NODE'
+          const fs=require('node:fs');
+          (async()=>{
+            let r, html;
+            const expected=fs.readFileSync('dist/index.html','utf8').match(/src="([^"]+\.js)"/)?.[1];
+            for(let i=0;i<12;i++) {
+              r=await fetch('https://poker-kan.web.app/?verify='+Date.now());
+              html=await r.text();
+              if(r.ok && expected && html.includes(expected))break;
+              await new Promise(resolve=>setTimeout(resolve,5000));
+            }
+            const local=fs.readFileSync('dist/index.html','utf8');
+            const script=local.match(/src="([^"]+\.js)"/)?.[1];
+            if(!r.ok||!script||!html.includes(script))throw Error('Published version mismatch');
+            const asset=await fetch(new URL(script,'https://poker-kan.web.app/'));
+            if(!asset.ok)throw Error('Published bundle unavailable');
+            console.log('Verified Derby scoring frontend: https://poker-kan.web.app/');
+          })().catch(e=>{console.error(e.message);process.exitCode=1});
+          NODE
+      - name: Remove temporary credential
+        if: always()
+        run: rm -f /tmp/3kong-showdown-deploy.json
