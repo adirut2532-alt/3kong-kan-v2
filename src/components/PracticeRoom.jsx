@@ -3,6 +3,7 @@ import { evalHand, validArr, calcScores, SUIT_RANK } from '../utils/ruleEngine.j
 import ArrangementBoard from './game/ArrangementBoard.jsx';
 import AnimatedScore from './game/AnimatedScore.jsx';
 import Showdown from './game/Showdown.jsx';
+import FoulConfirmation from './game/FoulConfirmation.jsx';
 import {aiArrange} from '../utils/aiEngine.js';
 import TableSurface from './game/TableSurface.jsx';
 import '../styles/practice-gameplay.css';
@@ -213,12 +214,14 @@ export default function PracticeRoom({ player, onExit }) {
     setHand(h => ({ ...h, mid:[...h.back], back:[...h.mid] }));
   }
 
-  function handleSubmit() {
+  const [confirmFoul, setConfirmFoul] = useState(false);
+  function handleSubmit(foulConfirmed = false) {
     if (hand.front.length !== 3 || hand.mid.length !== 5 || hand.back.length !== 5) {
       alert('กรุณาจัดไพ่ให้ครบ 3 กอง (3-5-5) ก่อนส่ง'); return;
     }
     const isFoul = !validArr(hand.front, hand.mid, hand.back);
-    if (isFoul) { if (!confirm('⚠️ ไพ่ฟาวล์! ยืนยันส่ง?')) return; }
+    if (isFoul && foulConfirmed !== true) { setConfirmFoul(true); return; }
+    setConfirmFoul(false);
 
     const allHands = { [player.name]: { front:hand.front, mid:hand.mid, back:hand.back, foul:isFoul, done:true }, ...botHands };
     const allPlayers = [{ name:player.name, avatar:player.avatar||'🦊', id:'me' }, ...BOTS];
@@ -337,6 +340,7 @@ export default function PracticeRoom({ player, onExit }) {
     {showRules&&<Sheet title="กติกาการเล่นเดิม" onClose={()=>setShowRules(false)}><div className="rules-copy">{RULES_TEXT}</div></Sheet>}
   </main>;
   if (phase === 'playing') return <main className="game-session practice-gameplay">
+    {confirmFoul && <FoulConfirmation onCancel={()=>setConfirmFoul(false)} onConfirm={()=>handleSubmit(true)}/>}
     <GameHeader title="ห้องซ้อม" subtitle={`ชิปฝึก ${myChips.toLocaleString('th-TH')}`} onBack={()=>setPhase('menu')}/>
     <div ref={ghostRef} className="poker-card" style={{position:'fixed',left:0,top:0,display:'none',pointerEvents:'none',zIndex:9999,opacity:.95,willChange:'transform',transition:'none'}}><span ref={ghostNumRef} className="card-num"/><span ref={ghostSuitRef} className="card-suit"/></div>
     <div className="game-play-layout"><TableSurface seats={tableSeats} self={self} hands={botHands} compact status="กำลังจัดไพ่"/><ArrangementBoard hand={hand} selectedCard={selectedCard} renderCard={renderCard} moveCardTo={moveCardTo} onUndo={handleUndo} onReset={handleReset} onSwap={handleSwapMidBack} onAuto={autoArrange} onSubmit={handleSubmit} undoCount={undoStack.length}/></div>

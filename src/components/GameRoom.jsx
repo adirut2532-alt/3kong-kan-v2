@@ -1,6 +1,7 @@
 import {useEvent} from '../hooks/useEvent.js';
 import React, { useState, useEffect, useRef } from 'react';
 import GameRoomView from './game/GameRoomView.jsx';
+import FoulConfirmation from './game/FoulConfirmation.jsx';
 import { db, firebase, call } from '../online.js';
 import {handsByPlayerName} from '../utils/roomSnapshot.js';
 import {subscribeRoom} from '../room-stream.js';
@@ -513,15 +514,15 @@ export default function GameRoom({ player, memberId, roomId, onExit }) {
     playSound('ready');
   }
  
-  async function handleSubmitHand() {
+  const [confirmFoul, setConfirmFoul] = useState(false);
+  async function handleSubmitHand(foulConfirmed = false) {
+    if (hand.done || pendingSubmission.current || room?.status !== 'playing') { setConfirmFoul(false); return; }
     if (hand.front.length !== 3 || hand.mid.length !== 5 || hand.back.length !== 5) {
       alert('กรุณาจัดไพ่ให้ครบทั้ง 3 กอง (3-5-5) ก่อนส่งครับ'); return;
     }
     const isFoul = !validArr(hand.front, hand.mid, hand.back);
-    if (isFoul) {
-      const ok = confirm('⚠️ ไพ่ของคุณฟาวล์อยู่ขณะนี้! ยืนยันการส่งไพ่แบบฟาวล์หรือไม่? (คนฟาวล์ต้องจ่ายให้ผู้เล่นอื่นคนละ 6 คะแนน)');
-      if (!ok) return;
-    }
+    if (isFoul && foulConfirmed !== true) { setConfirmFoul(true); return; }
+    setConfirmFoul(false);
     // Optimistic UI Update: Lock cards and play sound immediately for instant feel
     if(pendingSubmission.current)return;
     pendingSubmission.current=true;
@@ -603,5 +604,5 @@ export default function GameRoom({ player, memberId, roomId, onExit }) {
     return <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100vh', color: 'var(--text-muted)' }}>{connectionError||'กำลังเชื่อมต่อห้องเกม...'}{connectionError&&<button onClick={()=>setStreamAttempt(x=>x+1)}>ลองอีกครั้ง</button>}</div>;
   }
  
-  return <><div role="status" className="online-status">{connectionError&&<span>{connectionError} <button onClick={()=>{setStreamAttempt(x=>x+1);if(myId&&room.status==='playing')settleScores();}}>ลองเชื่อมต่ออีกครั้ง</button></span>}</div><GameRoomView {...{room,players,myId,isHost,hand,selectedCard,ghostRef,ghostNumRef,ghostSuitRef,floatingEmojis,player,roomId,handleExitRoom,setHistoryOpen,joinActive,setReadyState,handleHostStart,seats,renderCard,myChips,moveCardTo,handleSwapMidBack,handleAutoArrange,handleUndo,handleReset,handleSubmitHand,handleCancelSubmit,handleSendEmoji,handleCloseRoom,handleNextRound,chatOpen,setChatOpen,chatList,chatMsg,setChatMsg,handleSendChat,historyOpen,historyList,undoStack,soundVolume,setSoundVolume,speechMuted,setSpeechMuted}}/></>;
+  return <>{confirmFoul && <FoulConfirmation onCancel={()=>setConfirmFoul(false)} onConfirm={()=>handleSubmitHand(true)}/>}<div role="status" className="online-status">{connectionError&&<span>{connectionError} <button onClick={()=>{setStreamAttempt(x=>x+1);if(myId&&room.status==='playing')settleScores();}}>ลองเชื่อมต่ออีกครั้ง</button></span>}</div><GameRoomView {...{room,players,myId,isHost,hand,selectedCard,ghostRef,ghostNumRef,ghostSuitRef,floatingEmojis,player,roomId,handleExitRoom,setHistoryOpen,joinActive,setReadyState,handleHostStart,seats,renderCard,myChips,moveCardTo,handleSwapMidBack,handleAutoArrange,handleUndo,handleReset,handleSubmitHand,handleCancelSubmit,handleSendEmoji,handleCloseRoom,handleNextRound,chatOpen,setChatOpen,chatList,chatMsg,setChatMsg,handleSendChat,historyOpen,historyList,undoStack,soundVolume,setSoundVolume,speechMuted,setSpeechMuted}}/></>;
 }
