@@ -15,7 +15,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          ref: ee04f3ec8a89be14980a50aac1cabb8c9cd0207c
+          ref: ccb3d32e149d30aa59826955d2d1a46d9a8b4718
           fetch-depth: 0
       - uses: actions/setup-node@v4
         with:
@@ -52,7 +52,7 @@ jobs:
             if(!r.ok||!script||!html.includes(script))throw Error('Published version mismatch');
             const asset=await fetch(new URL(script,'https://poker-kan.web.app/'));
             if(!asset.ok)throw Error('Published bundle unavailable');
-            console.log('Verified foul confirmation frontend: https://poker-kan.web.app/');
+            console.log('Verified home/auth polish frontend: https://poker-kan.web.app/');
           })().catch(e=>{console.error(e.message);process.exitCode=1});
           NODE
       - name: Remove temporary credential
