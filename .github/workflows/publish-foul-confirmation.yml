@@ -15,12 +15,13 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          ref: ccb3d32e149d30aa59826955d2d1a46d9a8b4718
+          ref: 4bc39a8aa7eaadf7a3c73df8982b703ea7b03423
           fetch-depth: 0
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
       - run: npm ci
+      - run: npm ci --prefix functions
       - run: npm test && node tests/smart-arrange.mjs && npm run lint && npm run build
       - name: Publish verified frontend
         env:
@@ -33,6 +34,7 @@ jobs:
           if(key.project_id!=='poker-kan')throw Error('Wrong deployment project');
           fs.writeFileSync(process.env.GOOGLE_APPLICATION_CREDENTIALS,JSON.stringify(key),{mode:0o600});
           NODE
+          npx firebase deploy --project poker-kan --only functions:gameAction --non-interactive
           npx firebase deploy --project poker-kan --only hosting --non-interactive
       - name: Verify published version
         run: |
@@ -52,7 +54,7 @@ jobs:
             if(!r.ok||!script||!html.includes(script))throw Error('Published version mismatch');
             const asset=await fetch(new URL(script,'https://poker-kan.web.app/'));
             if(!asset.ok)throw Error('Published bundle unavailable');
-            console.log('Verified home/auth polish frontend: https://poker-kan.web.app/');
+            console.log('Verified foul-rule fix (engine + frontend): https://poker-kan.web.app/');
           })().catch(e=>{console.error(e.message);process.exitCode=1});
           NODE
       - name: Remove temporary credential
