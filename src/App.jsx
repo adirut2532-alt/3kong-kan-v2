@@ -51,13 +51,24 @@ export default function App() {
     setScreen('practice');
   }
 
+  // ฝึกกับ AI จากหน้าแรกได้ทันที ไม่ต้องสมัคร/ล็อกอิน (ชิปฝึกไม่เกี่ยวกับบัญชีจริง)
+  function handleGuestPractice() {
+    if (!player) setPlayer({ name: 'มือใหม่', avatar: '🦊', chips: 0, guest: true });
+    setScreen('practice');
+  }
+
   function handleExitPractice() {
+    if (player?.guest) {
+      setPlayer(null);
+      setScreen('home');
+      return;
+    }
     setScreen('lobby');
   }
 
   return (
     <div className="app-container game-ui"><Suspense fallback={<div className="game-loading" role="status"><Brand/><span>กำลังเตรียมโต๊ะ…</span></div>}>
-      {screen === 'home' && <HomeView onStart={() => {setLoginTarget('lobby');setScreen('login');}} onPractice={() => {setLoginTarget('practice');setScreen('login');}}/>}
+      {screen === 'home' && <HomeView onStart={() => {setLoginTarget('lobby');setScreen('login');}} onPractice={handleGuestPractice}/>}
       {screen === 'login' && (
         <Login
           onBack={() => setScreen('home')}
