@@ -34,8 +34,10 @@ jobs:
           if(key.project_id!=='poker-kan')throw Error('Wrong deployment project');
           fs.writeFileSync(process.env.GOOGLE_APPLICATION_CREDENTIALS,JSON.stringify(key),{mode:0o600});
           NODE
-          npx firebase deploy --project poker-kan --only functions:gameAction --non-interactive
           npx firebase deploy --project poker-kan --only hosting --non-interactive
+          # gameAction carries the same rule engine; it needs the Blaze plan. Do not fail hosting if billing is off.
+          npx firebase deploy --project poker-kan --only functions:gameAction --non-interactive --force \
+            || echo "::warning::functions:gameAction not deployed (project not on Blaze plan). Server keeps the old engine until billing is restored and this workflow is re-run."
       - name: Verify published version
         run: |
           node <<'NODE'
