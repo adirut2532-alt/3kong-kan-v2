@@ -504,11 +504,7 @@ export default function GameRoom({ player, memberId, roomId, onExit }) {
     const all = [...hand.front, ...hand.mid, ...hand.back, ...hand.unplaced];
     if (all.length < 13) return;
     pushUndo();
-    if (new Set(all.map(c => c.val)).size === 13) {
-      setHand({ front: all.slice(0, 3), mid: all.slice(3, 8), back: all.slice(8, 13), unplaced: [], done: false, foul: false });
-      playSound('ready');
-      return;
-    }
+    // Dragon hands go through the same legal-arrangement search; slicing the tray in its current order could foul.
     const arranged = aiArrange(all, aiMode);
     setHand({ front: arranged.front, mid: arranged.mid, back: arranged.back, unplaced: [], done: false, foul: false });
     playSound('ready');

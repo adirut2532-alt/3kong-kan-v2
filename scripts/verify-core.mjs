@@ -6,8 +6,9 @@ import assert from 'node:assert/strict';
 const baseline=JSON.parse(readFileSync(new URL('../qa/core-preservation.json',import.meta.url)));
 for(const item of baseline.filter(x=>x.sha256 && !['functions/index.js','firestore.rules','src/utils/aiEngine.js'].includes(x.file))){
  const hash=createHash('sha256').update(readFileSync(new URL('../'+item.file,import.meta.url))).digest('hex');
- // Owner-approved Derby correction: lock the new engine; retain original audit hash.
- const expected=item.file==='src/utils/ruleEngine.js'?'8160f0342fdc21467d9576e3352b7933b484d63a2f02a4ef33ff1c8bd39b88ff':item.sha256;
+ // Owner-approved Derby correction, then owner-approved foul fix (2026-11-06): handSortKey padded to 5 slots so a
+ // 3-card front is compared against a 5-card pile correctly (front AA vs mid 22 was wrongly accepted). Lock the new engine.
+ const expected=item.file==='src/utils/ruleEngine.js'?'df38cba7c354e57bed7612e5d76b097a5fc607167d17ef84812239a7a082cef5':item.sha256;
  assert.equal(hash,expected,`${item.file} differs from approved source`);
  console.log('Verified:',item.file);
 }

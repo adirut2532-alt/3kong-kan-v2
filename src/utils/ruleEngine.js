@@ -83,7 +83,11 @@ export function handSortKey(cards) {
   }
   kick.sort((a, b) => b.val - a.val);
 
-  return [...main, ...kick].reduce((acc, c) => acc * 100 + c.val, 0);
+  // Fixed width (5 slots) so a 3-card front can be compared against a 5-card pile:
+  // without padding every 5-card key outranked every 3-card key (e.g. front AA vs mid 22 passed as valid).
+  const ordered = [...main, ...kick];
+  while (ordered.length < 5) ordered.push({ val: 0 });
+  return ordered.reduce((acc, c) => acc * 100 + c.val, 0);
 }
 
 export function straightKey(vals) {
